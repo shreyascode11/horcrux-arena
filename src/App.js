@@ -5,6 +5,16 @@ import io from 'socket.io-client';
 const socket = io.connect("http://localhost:3001");
 
 // --- ICONS ---
+// (Kept for internal game use, removed from login)
+const IconSnitch = () => (
+  <svg className="w-12 h-12 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" opacity=".4"/>
+    <path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6z"/>
+    <path d="M22 12h-2a8 8 0 0 0-8-8V2a10 10 0 0 1 10 10z" className="animate-pulse"/> 
+    <path d="M2 12h2a8 8 0 0 1 8-8V2A10 10 0 0 0 2 12z" className="animate-pulse"/>
+  </svg>
+);
+
 const IconSword = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
 const IconUsers = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const IconScroll = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
@@ -16,8 +26,7 @@ const IconClose = () => <svg className="w-6 h-6" fill="none" stroke="currentColo
 function App() {
   const [view, setView] = useState('login'); 
   const [username, setUsername] = useState('');
-  const [stars, setStars] = useState({ small: '', medium: '', big: '' });
-
+  
   // Game Data
   const [difficulty, setDifficulty] = useState('Moderate');
   const [inputType, setInputType] = useState('topic');
@@ -26,269 +35,214 @@ function App() {
   const [joinCode, setJoinCode] = useState('');
   const [roomPlayers, setRoomPlayers] = useState([]);
   
-  // File Upload State
+  // File Upload & Modals
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
-
-  // 1v1 Modal State
   const [show1v1Modal, setShow1v1Modal] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchTopic, setSearchTopic] = useState('');
 
   useEffect(() => {
-    // Star Generator
-    const generateStars = (count) => {
-      let result = "";
-      for (let i = 0; i < count; i++) {
-        const x = Math.floor(Math.random() * 2000);
-        const y = Math.floor(Math.random() * 2000);
-        result += `${x}px ${y}px #FFF, `;
-      }
-      return result.slice(0, -2);
-    };
-    setStars({ small: generateStars(700), medium: generateStars(200), big: generateStars(100) });
-
     socket.on("room_data", (data) => {
       setRoomPlayers(data.players);
       setView('lobby'); 
     });
   }, []);
 
-  // --- ACTIONS ---
   const handleLogin = () => { if (username.trim()) setView('menu'); };
-
-  // 1v1 Logic
   const open1v1Setup = () => { setShow1v1Modal(true); };
-
+  
   const startMatchmaking = () => {
     if (!searchTopic) return;
     setIsSearching(true);
-    setTimeout(() => {
-      setIsSearching(false);
-      setShow1v1Modal(false);
-      setView('game'); // <--- THIS STARTS THE GAME
-    }, 2500);
+    setTimeout(() => { setIsSearching(false); setShow1v1Modal(false); setView('game'); }, 2500);
   };
 
   const createRoom = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setRoomCode(code);
-    socket.emit("create_room", { 
-      username, 
-      roomCode: code, 
-      config: { topic, difficulty, file: selectedFile ? selectedFile.name : null } 
-    });
+    socket.emit("create_room", { username, roomCode: code, config: { topic, difficulty, file: selectedFile?.name } });
   };
 
   const joinRoom = () => {
-    if (joinCode.length === 4) {
-      setRoomCode(joinCode);
-      socket.emit("join_room", { username, roomCode: joinCode });
-    } else {
-      alert("Please enter a valid 4-digit code!");
-    }
+    if (joinCode.length === 4) { setRoomCode(joinCode); socket.emit("join_room", { username, roomCode: joinCode }); } 
+    else { alert("Please enter a valid 4-digit code!"); }
   };
 
-  // Upload Logic
   const handleFileClick = () => { fileInputRef.current.click(); };
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) setSelectedFile(file);
-  };
-
-  // --- THE FIX: Start Game Logic ---
-  const startGame = () => {
-    setView('game');
-  };
+  const handleFileChange = (e) => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); };
 
   return (
-    <div className="relative w-full min-h-screen flex items-center justify-center overflow-y-auto font-body text-white">
+    <div className="relative w-full min-h-screen overflow-hidden font-body text-white bg-black">
       
-      {/* BACKGROUND */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_bottom,_#2e0235_0%,_#0d0115_40%,_#000000_100%)] -z-20"></div>
-      <div className="fixed inset-0 animate-[floatUp_50s_linear_infinite] -z-10" style={{ boxShadow: stars.small, width: '1px', height: '1px', opacity: 0.4 }}></div>
+      {/* --- HERO BACKGROUND EFFECT --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        {/* 1. Deep Void Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0b2e] via-black to-[#0f0518]"></div>
+        
+        {/* 2. Moving 'Light Shafts' */}
+        <div className="absolute inset-0 opacity-40 mix-blend-screen animate-pulse">
+             <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[conic-gradient(from_0deg_at_50%_50%,_transparent_0deg,_#ff0055_20deg,_transparent_60deg)] animate-[spin_8s_linear_infinite] blur-[100px]"></div>
+        </div>
 
-      <div className="z-10 w-full max-w-4xl p-4 flex flex-col items-center my-10">
+        {/* 3. Subtle Grid Overlay */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+      </div>
 
-        {/* --- 1v1 SETUP MODAL --- */}
-        {show1v1Modal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-            <div className="glass-panel p-8 rounded-2xl w-full max-w-md relative border border-blue-500/50 shadow-[0_0_40px_rgba(59,130,246,0.3)]">
-              {!isSearching && (
-                <button onClick={() => setShow1v1Modal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><IconClose /></button>
-              )}
 
-              {isSearching ? (
-                <div className="text-center py-8">
-                  <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                  <h3 className="text-2xl font-bold animate-pulse">Scanning the Void...</h3>
-                  <p className="text-gray-400 mt-2">Looking for opponents interested in <span className="text-blue-400">{searchTopic}</span></p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-400"><IconSword /></div>
-                  <h3 className="text-2xl font-magic mb-2">Prepare for Duel</h3>
-                  <p className="text-gray-400 text-sm mb-6">Choose your battlefield.</p>
-                  
-                  <input type="text" placeholder="Enter Topic (e.g. React, History)" className="w-full p-4 rounded-xl text-center text-lg bg-black/50 border border-blue-500 text-white placeholder-gray-500 focus:outline-none focus:border-blue-300 transition-all mb-6" value={searchTopic} onChange={(e) => setSearchTopic(e.target.value)} autoFocus />
-                  
-                  <button onClick={startMatchmaking} disabled={!searchTopic} className={`w-full py-4 rounded-xl text-lg font-bold tracking-wider transition-all ${searchTopic ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/50' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}>FIND MATCH</button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+      {/* --- CONTENT LAYER --- */}
+      <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-4">
 
-        {/* 1. LOGIN */}
+        {/* 1. HERO LOGIN */}
         {view === 'login' && (
-          <div className="glass-panel p-10 rounded-2xl max-w-md w-full text-center flex flex-col gap-6 animate-[fadeIn_1s_ease-out]">
-            <div>
-              <h1 className="text-5xl font-magic text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300 mb-2">Horcrux</h1>
-              <p className="text-purple-200 text-xs tracking-[0.3em] uppercase opacity-70">The Ultimate Wizarding Quiz</p>
+          <div className="flex flex-col items-center justify-center w-full max-w-4xl animate-[fadeIn_1.5s_ease-out]">
+            
+            {/* Logo Area (Clean, No Snitch) */}
+            <div className="mb-12 relative group">
+                <div className="w-40 h-40 rounded-full border border-white/10 flex items-center justify-center bg-black/30 backdrop-blur-md shadow-[0_0_50px_rgba(255,0,85,0.2)] group-hover:shadow-[0_0_80px_rgba(255,0,85,0.5)] transition-all duration-700">
+                     <span className="text-gray-500 font-magic text-sm tracking-widest">LOGO</span>
+                </div>
             </div>
-            <input type="text" placeholder="Enter Wizard Name" className="w-full p-4 rounded-xl text-center text-lg bg-black/50 border border-purple-500 text-white placeholder-gray-400 focus:outline-none focus:border-purple-300 transition-all" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
-            <button onClick={handleLogin} className="glow-btn text-white font-bold py-4 rounded-xl text-lg tracking-wider">Enter Dashboard</button>
+
+            {/* Main Title */}
+            <h1 className="text-6xl md:text-8xl font-magic text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-600 tracking-tighter mb-4 drop-shadow-2xl">
+              HORCRUX
+            </h1>
+            <p className="text-pink-200/60 text-sm md:text-base tracking-[0.5em] uppercase mb-20 font-light">
+              Enter the Arena
+            </p>
+
+            {/* Input & Button */}
+            <div className="w-full max-w-md relative flex flex-col items-center">
+                <input 
+                  type="text" 
+                  className="w-full bg-transparent border-b-2 border-white/20 text-center text-4xl md:text-5xl py-4 font-magic text-white placeholder-white/10 focus:outline-none focus:border-pink-500 transition-all duration-500"
+                  placeholder="Your Name"
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  autoFocus
+                />
+                
+                {/* ENTER Button */}
+                <div className={`mt-12 transition-all duration-700 ${username ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                    <button 
+                        onClick={handleLogin}
+                        className="group relative px-16 py-4 bg-transparent overflow-hidden rounded-full border border-pink-500/50 hover:border-pink-500 transition-all"
+                    >
+                        <div className="absolute inset-0 w-full h-full bg-pink-500/20 group-hover:bg-pink-500/40 transition-all blur-xl"></div>
+                        <span className="relative text-xl font-bold tracking-[0.2em] uppercase">ENTER</span>
+                    </button>
+                </div>
+            </div>
+
           </div>
         )}
 
-        {/* 2. DASHBOARD */}
+        {/* 2. DASHBOARD (Menu) */}
         {view === 'menu' && (
-          <div className="w-full animate-[fadeIn_0.5s_ease-out]">
-            <div className="flex justify-between items-center mb-8 px-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 border-2 border-white/20 flex items-center justify-center font-magic text-xl">{username.charAt(0).toUpperCase()}</div>
-                <div className="text-left"><h3 className="text-lg font-bold">{username}</h3><p className="text-xs text-purple-300">Level 1 Apprentice</p></div>
-              </div>
-              <button onClick={() => setView('login')} className="text-xs text-red-400 hover:text-red-300">Logout</button>
-            </div>
+          <div className="w-full max-w-5xl animate-[slideUp_0.8s_cubic-bezier(0.16,1,0.3,1)]">
+             <div className="flex justify-between items-center mb-12">
+                <div>
+                   <h2 className="text-4xl font-magic">Welcome, {username}</h2>
+                   <p className="text-gray-400">Ready your wand.</p>
+                </div>
+                <button onClick={() => setView('login')} className="text-red-400 hover:text-white transition-colors">Logout</button>
+             </div>
 
-            {/* Quick Join */}
-            <div className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-4 border-l-4 border-yellow-500">
-              <h3 className="font-bold text-lg whitespace-nowrap">Join via Code:</h3>
-              <input type="text" placeholder="Ex: 4821" className="w-full md:w-40 p-3 rounded-lg bg-black/50 border border-gray-600 text-center text-white tracking-widest" maxLength={4} value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
-              <button onClick={joinRoom} className="px-8 py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors w-full md:w-auto">JOIN</button>
-            </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 <div onClick={open1v1Setup} className="group relative h-80 bg-white/5 border border-white/10 rounded-3xl p-8 cursor-pointer overflow-hidden hover:border-blue-500/50 transition-all duration-500">
+                    <div className="absolute inset-0 bg-blue-500/20 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <IconSword />
+                    <h3 className="text-3xl font-magic mt-4 mb-2">1 vs 1 Duel</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">Match with a random wizard based on your topic of choice.</p>
+                 </div>
 
-            {/* Main Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div onClick={open1v1Setup} className="glass-panel p-8 rounded-2xl hover:scale-105 transition-all cursor-pointer group flex flex-col items-center gap-4 border-t-4 border-blue-500">
-                <div className="p-4 rounded-full bg-blue-500/20 text-blue-300 group-hover:bg-blue-500 group-hover:text-white"><IconSword /></div><h3 className="text-2xl font-magic">1 vs 1 Duel</h3><p className="text-sm text-gray-400 text-center">Random Matchmaking</p>
-              </div>
-              
-              <div onClick={() => setView('host')} className="glass-panel p-8 rounded-2xl hover:scale-105 transition-all cursor-pointer group flex flex-col items-center gap-4 border-t-4 border-purple-500">
-                <div className="p-4 rounded-full bg-purple-500/20 text-purple-300 group-hover:bg-purple-500 group-hover:text-white"><IconUsers /></div><h3 className="text-2xl font-magic">Squad Battle</h3><p className="text-sm text-gray-400 text-center">Create a Private Room</p>
-              </div>
+                 <div onClick={() => setView('host')} className="group relative h-80 bg-white/5 border border-white/10 rounded-3xl p-8 cursor-pointer overflow-hidden hover:border-purple-500/50 transition-all duration-500">
+                    <div className="absolute inset-0 bg-purple-500/20 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <IconUsers />
+                    <h3 className="text-3xl font-magic mt-4 mb-2">Squad Battle</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">Create a private room. Invite friends via code. Battle together.</p>
+                 </div>
 
-               <div className="glass-panel p-8 rounded-2xl hover:scale-105 transition-all cursor-pointer group flex flex-col items-center gap-4 border-t-4 border-green-500">
-                <div className="p-4 rounded-full bg-green-500/20 text-green-300 group-hover:bg-green-500 group-hover:text-white"><IconScroll /></div><h3 className="text-2xl font-magic">Grimoire</h3><p className="text-sm text-gray-400 text-center">View match history.</p>
-              </div>
-            </div>
+                 <div className="group relative h-80 bg-white/5 border border-white/10 rounded-3xl p-8 cursor-pointer overflow-hidden hover:border-green-500/50 transition-all duration-500">
+                    <div className="absolute inset-0 bg-green-500/20 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <IconScroll />
+                    <h3 className="text-3xl font-magic mt-4 mb-2">Grimoire</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">Check your past battle history and performance stats.</p>
+                 </div>
+             </div>
           </div>
         )}
 
-        {/* 3. HOST INTERFACE */}
+        {/* 3. HOST CONFIGURATION */}
         {view === 'host' && (
-          <div className="glass-panel p-8 rounded-2xl w-full max-w-2xl animate-[fadeIn_0.5s_ease-out] relative">
-            <button onClick={() => setView('menu')} className="absolute top-6 left-6 text-sm text-gray-400 hover:text-white">← Back</button>
-            <h2 className="text-3xl font-magic text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-blue-300">Configure Your Arena</h2>
-            
-            <div className="flex gap-4 mb-8 justify-center">
-              <button onClick={() => setInputType('topic')} className={`px-6 py-3 rounded-xl border transition-all ${inputType === 'topic' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-transparent border-gray-600 text-gray-400'}`}>Generated by AI</button>
-              <button onClick={() => setInputType('file')} className={`px-6 py-3 rounded-xl border transition-all ${inputType === 'file' ? 'bg-blue-600 border-blue-400 text-white' : 'bg-transparent border-gray-600 text-gray-400'}`}>Upload File (AI)</button>
-            </div>
-
-            <div className="mb-8 min-h-[120px] flex flex-col justify-center">
-              {inputType === 'topic' ? (
-                <div className="relative">
-                  <div className="absolute left-4 top-4 text-purple-400"><IconMagic /></div>
-                  <input type="text" placeholder="e.g. Ancient Runes, Python Basics..." className="w-full p-4 pl-12 rounded-xl text-lg bg-black/50 border border-purple-500 text-white placeholder-gray-400 focus:outline-none focus:border-purple-300 transition-all" value={topic} onChange={(e) => setTopic(e.target.value)} />
-                </div>
-              ) : (
-                <div onClick={handleFileClick} className="border-2 border-dashed border-gray-600 hover:border-blue-400 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all bg-black/20 hover:bg-black/40">
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} hidden accept=".pdf,.doc,.docx,.txt" />
-                  <IconUpload />
-                  {selectedFile ? (
-                     <span className="mt-2 text-green-400 font-bold">{selectedFile.name}</span>
-                  ) : (
-                     <>
-                       <span className="mt-2 text-gray-300">Drag & Drop PDF or Click to Upload</span>
-                       <span className="text-xs text-gray-500 mt-1">AI will read your document and quiz you.</span>
-                     </>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="mb-10">
-              <p className="text-sm text-gray-400 mb-3 text-center uppercase tracking-widest">Select Difficulty</p>
-              <div className="grid grid-cols-3 gap-4">
-                {['Easy', 'Moderate', 'Hard'].map((level) => (
-                  <button key={level} onClick={() => setDifficulty(level)} className={`py-3 rounded-lg border transition-all font-bold ${difficulty === level ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-transparent border-gray-700 text-gray-500 hover:border-gray-500'}`}>{level}</button>
-                ))}
-              </div>
-            </div>
-            <button onClick={createRoom} className="w-full glow-btn py-4 rounded-xl text-xl font-bold tracking-widest uppercase">Summon Room</button>
-          </div>
-        )}
-
-        {/* 4. WAITING LOBBY */}
-        {view === 'lobby' && (
-          <div className="glass-panel p-8 rounded-2xl w-full max-w-lg text-center animate-[fadeIn_0.5s_ease-out]">
-            <h2 className="text-2xl font-magic text-purple-300 mb-2">Chamber of Secrets</h2>
-            <p className="text-gray-400 text-sm mb-6">Waiting for wizards to join...</p>
-
-            <div className="bg-black/40 border border-purple-500/50 p-6 rounded-xl mb-8 relative group cursor-pointer hover:border-purple-400 transition-all" onClick={() => alert('Code Copied!')}>
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Room Portkey</p>
-              <div className="text-4xl font-mono font-bold tracking-wider text-white flex justify-center items-center gap-3">{roomCode}<IconCopy /></div>
-            </div>
-
-            <div className="flex gap-4 justify-center mb-10 flex-wrap">
-              {roomPlayers.map((player, index) => (
-                <div key={index} className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-full bg-purple-600 border-2 border-purple-300 flex items-center justify-center text-2xl animate-pulse">🧙‍♂️</div>
-                  <span className="text-sm font-bold">{player}</span>
-                </div>
-              ))}
-              {roomPlayers.length < 2 && (
-                 <div className="flex flex-col items-center gap-2 opacity-50">
-                  <div className="w-16 h-16 rounded-full bg-white/5 border-2 border-dashed border-gray-600 flex items-center justify-center text-2xl">?</div>
-                  <span className="text-sm text-gray-500">Waiting...</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-4">
-               <button onClick={() => setView('menu')} className="flex-1 py-4 rounded-xl border border-red-500/50 text-red-400 hover:bg-red-500/10 font-bold">Exit</button>
+           <div className="w-full max-w-2xl bg-black/40 backdrop-blur-xl border border-white/10 p-12 rounded-3xl animate-[fadeIn_0.5s_ease-out]">
+              <button onClick={() => setView('menu')} className="mb-8 text-gray-500 hover:text-white">← Back</button>
+              <h2 className="text-4xl font-magic mb-8 text-center">Summon a Room</h2>
               
-              {/* --- HERE IS THE START BUTTON --- */}
-              <button onClick={startGame} className="flex-[2] glow-btn py-4 rounded-xl text-lg font-bold">Start Duel</button>
-            </div>
-          </div>
+              <div className="flex gap-4 mb-8">
+                  <button onClick={() => setInputType('topic')} className={`flex-1 py-4 rounded-xl border transition-all ${inputType === 'topic' ? 'bg-purple-600 border-purple-400 text-white' : 'border-white/10 text-gray-500'}`}>Topic</button>
+                  <button onClick={() => setInputType('file')} className={`flex-1 py-4 rounded-xl border transition-all ${inputType === 'file' ? 'bg-blue-600 border-blue-400 text-white' : 'border-white/10 text-gray-500'}`}>Upload PDF</button>
+              </div>
+
+              <div className="mb-8">
+                 {inputType === 'topic' ? (
+                   <input type="text" placeholder="e.g. Dark Arts, ReactJS..." className="w-full bg-black/50 border border-white/20 p-4 rounded-xl text-white focus:border-purple-500 outline-none" value={topic} onChange={(e) => setTopic(e.target.value)} />
+                 ) : (
+                   <div onClick={handleFileClick} className="border-2 border-dashed border-white/20 hover:border-blue-400 rounded-xl p-8 text-center cursor-pointer transition-all">
+                      <IconUpload />
+                      <p className="mt-2 text-sm text-gray-400">{selectedFile ? selectedFile.name : "Click to Upload Document"}</p>
+                      <input type="file" ref={fileInputRef} onChange={handleFileChange} hidden accept=".pdf,.doc,.docx" />
+                   </div>
+                 )}
+              </div>
+              
+              <button onClick={createRoom} className="w-full py-4 bg-white text-black font-bold rounded-xl hover:scale-[1.02] transition-transform">CREATE ROOM</button>
+           </div>
         )}
 
-        {/* 5. GAME SCREEN */}
-        {view === 'game' && (
-          <div className="glass-panel p-6 md:p-10 rounded-2xl w-full max-w-3xl animate-[fadeIn_0.5s_ease-out] relative">
-            <div className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
-              <div className="text-xl font-bold text-purple-300">Round 1/10</div>
-              <div className="px-4 py-2 bg-red-900/50 rounded-lg text-red-200 font-mono font-bold border border-red-500/50 animate-pulse">
-                ⏳ 14s
+        {/* 4. GAME LOBBY */}
+        {view === 'lobby' && (
+           <div className="text-center animate-[fadeIn_0.5s]">
+              <h2 className="text-5xl font-magic mb-2">Room {roomCode}</h2>
+              <p className="text-gray-400 mb-12">Waiting for challengers...</p>
+              <div className="flex justify-center gap-8 mb-12">
+                 {roomPlayers.map((p, i) => (
+                    <div key={i} className="flex flex-col items-center gap-4">
+                       <div className="w-20 h-20 rounded-full bg-purple-600 flex items-center justify-center text-3xl border-4 border-black shadow-[0_0_20px_rgba(147,51,234,0.5)]">🧙‍♂️</div>
+                       <span className="font-bold">{p}</span>
+                    </div>
+                 ))}
+                 {roomPlayers.length < 2 && <div className="w-20 h-20 rounded-full border-2 border-dashed border-gray-600 flex items-center justify-center text-gray-600">?</div>}
               </div>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-magic text-center mb-10 leading-relaxed">
-              "Which spell is used to disarm an opponent in a duel?"
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {['A) Avada Kedavra', 'B) Expelliarmus', 'C) Lumos', 'D) Wingardium Leviosa'].map((opt) => (
-                <button key={opt} className="p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-purple-600 hover:border-purple-400 transition-all text-left text-lg font-bold">
-                  {opt}
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-between items-center text-sm text-gray-400">
-               <span>P1: {username} (0 pts)</span>
-               <span>Opponent: ??? (0 pts)</span>
-            </div>
+              <button onClick={() => setView('game')} className="px-12 py-4 bg-pink-600 rounded-full font-bold hover:bg-pink-500 transition-all shadow-[0_0_30px_rgba(219,39,119,0.4)]">START DUEL</button>
+           </div>
+        )}
+        
+        {/* 5. GAME SCREEN (Placeholder) */}
+        {view === 'game' && <div className="text-4xl font-magic animate-pulse">Battle In Progress...</div>}
+
+        {/* 1v1 Modal */}
+        {show1v1Modal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
+             <div className="bg-black border border-white/20 p-8 rounded-2xl w-full max-w-md text-center">
+                {!isSearching ? (
+                   <>
+                     <h3 className="text-2xl font-magic mb-6">Enter Topic</h3>
+                     <input type="text" className="w-full bg-white/5 border border-white/20 p-4 rounded-xl text-center mb-6 text-white focus:border-blue-500 outline-none" value={searchTopic} onChange={(e) => setSearchTopic(e.target.value)} autoFocus />
+                     <div className="flex gap-4">
+                        <button onClick={() => setShow1v1Modal(false)} className="flex-1 py-3 text-gray-500 hover:text-white">Cancel</button>
+                        <button onClick={startMatchmaking} className="flex-1 py-3 bg-blue-600 rounded-xl font-bold">Find</button>
+                     </div>
+                   </>
+                ) : (
+                   <div className="py-12">
+                      <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                      <p className="animate-pulse">Searching the void...</p>
+                   </div>
+                )}
+             </div>
           </div>
         )}
 
