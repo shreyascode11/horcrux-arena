@@ -2,22 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 
 // --- IMPORT COMPONENTS ---
-import GameArena from './components/GameArena';
-import Background from './components/background';
+import GameArena from './components/GameArena';      // Your AI Game
+import Background from './components/background';    // The Smart Background
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
-import SquadHost from './components/SquadHost';
-import DuelModal from './components/DuelModal';
+import SquadHost from './components/SquadHost';      // Team's Squad Host
+import DuelModal from './components/DuelModal';      // Your Connected Modal
 
 // --- CONNECT TO SERVER ---
 const socket = io.connect("http://localhost:3001");
 
 function App() {
+  // --- GLOBAL STATE ---
   const [view, setView] = useState('login'); 
   const [username, setUsername] = useState('');
   const [roomData, setRoomData] = useState(null);
 
-  // --- DYNAMIC THEME LOGIC ---
+  // --- DYNAMIC THEME LOGIC (Yours - Keep this!) ---
   const getTheme = () => {
     switch(view) {
       case 'login': return 'red';
@@ -41,7 +42,8 @@ function App() {
   const fileInputRef = useRef(null);
   const [show1v1Modal, setShow1v1Modal] = useState(false);
 
-useEffect(() => {
+  // --- SOCKET LISTENERS (Yours - The Real Backend) ---
+  useEffect(() => {
     // 1. Existing listener for multiplayer lobbies
     socket.on("room_data", (data) => {
       setRoomPlayers(data.players);
@@ -77,7 +79,7 @@ useEffect(() => {
   return (
     <div className="relative w-full min-h-screen overflow-hidden text-white bg-black" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
       
-      {/* 1. BACKGROUND LAYER */}
+      {/* 1. BACKGROUND LAYER (Using your smart theme prop) */}
       <Background theme={getTheme()} />
 
       {/* 2. MAIN CONTENT LAYER */}
@@ -91,6 +93,7 @@ useEffect(() => {
           <Dashboard username={username} setView={setView} open1v1Setup={open1v1Setup} />
         )}
 
+        {/* SQUAD HOST (Team's Feature - fully integrated) */}
         {view === 'host' && (
           <SquadHost 
             setView={setView} 
@@ -102,6 +105,7 @@ useEffect(() => {
           />
         )}
 
+        {/* LOBBY (Yours is better - has animations & player list) */}
         {view === 'lobby' && (
            <div className="text-center animate-[fadeIn_0.5s]">
               <p className="text-green-500 font-bold tracking-[0.3em] uppercase mb-6 text-xs">Access Code Generated</p>
@@ -118,6 +122,7 @@ useEffect(() => {
            </div>
         )}
 
+        {/* GAME ARENA (Yours - actually plays the game) */}
         {view === 'game' && (
            <GameArena 
              socket={socket} 
@@ -129,8 +134,7 @@ useEffect(() => {
 
       </div>
 
-      {/* 3. MODAL LAYER (MOVED OUTSIDE) */}
-      {/* This ensures the modal sits on top of everything and is clickable */}
+      {/* 3. MODAL LAYER (Using your Smart Modal) */}
       {show1v1Modal && (
           <DuelModal 
             socket={socket}             
