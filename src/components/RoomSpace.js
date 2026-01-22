@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 // --- ICONS ---
 const IconCopy = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" /></svg>;
@@ -16,6 +16,23 @@ const RoomSpace = ({
   
   const fontStyle = { fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" };
   const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${username}&backgroundColor=b6e3f4`;
+
+  // --- NEW: Handle Enter Key Press ---
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        onJoin();
+      }
+    };
+
+    // Attach listener to window
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup listener when component unmounts
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onJoin]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center animate-[slideUp_0.8s_cubic-bezier(0.16,1,0.3,1)]" style={fontStyle}>
@@ -54,7 +71,7 @@ const RoomSpace = ({
               onClick={() => navigator.clipboard.writeText(roomCode)}
               title="Click to copy"
             >
-              {/* Digits - UPDATED: Using bg-white/5 for true glass transparency */}
+              {/* Digits */}
               {roomCode.split('').map((digit, i) => (
                 <div 
                   key={i} 
@@ -64,7 +81,7 @@ const RoomSpace = ({
                 </div>
               ))}
               
-              {/* Copy Icon - Beside the code */}
+              {/* Copy Icon */}
               <div className="ml-2 p-3 rounded-full bg-white/5 text-purple-500 opacity-60 group-hover:opacity-100 group-hover:bg-purple-600/10 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm border border-white/10">
                 <IconCopy />
               </div>
