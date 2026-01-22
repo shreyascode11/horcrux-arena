@@ -2,12 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================
+   GLOBAL ANIMATIONS
+========================= */
+
 /* Smooth fade-in animation for switching screens */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* =========================
+   GLASS CARD UTILITIES
+========================= */
+@layer components {
+
+  /* Core glass card */
+  .glass-card {
+    @apply relative
+           bg-white/5
+           backdrop-blur-xl
+           border border-white/10
+           rounded-3xl
+           transition-all duration-500
+           ease-[cubic-bezier(0.16,1,0.3,1)];
+  }
+
+  /* Hover interaction */
+  .glass-card-hover {
+    @apply hover:border-purple-500/40
+           hover:shadow-[0_0_60px_rgba(168,85,247,0.25)]
+           hover:-translate-y-1;
+  }
+
+  /* Large feature cards (1v1, Squad Battle) */
+  .glass-card-feature {
+    @apply glass-card glass-card-hover p-10;
+  }
+
+  /* Small info cards (Rank, AI, History) */
+  .glass-card-info {
+    @apply glass-card p-6;
+  }
+
+  /* Typography helpers */
+  .glass-title {
+    @apply text-4xl font-bold tracking-tight text-white;
+  }
+
+  .glass-title-sm {
+    @apply text-2xl font-semibold tracking-tight text-white;
+  }
+
+  .glass-subtitle {
+    @apply text-sm text-gray-400 leading-relaxed;
+  }
+
+  .glass-meta {
+    @apply text-xs uppercase tracking-widest text-gray-500;
+  }
+}
+
+/* =========================
+   ARCANE MAGIC ANIMATION
+========================= */
+@keyframes arcaneGlow {
+  0% {
+    box-shadow: 0 0 0 rgba(168,85,247,0);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(168,85,247,0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(168,85,247,0);
+  }
+}
+
+.glass-card-magic:hover {
+  animation: arcaneGlow 1.6s ease-in-out infinite;
 }

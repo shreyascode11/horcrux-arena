@@ -28,31 +28,52 @@ const FALLBACK_QUESTIONS = [
 ];
 
 // --- AI GENERATION FUNCTION ---
+// --- AI GENERATION FUNCTION (INDIA FOCUSED) ---
 async function generateQuestions(topic) {
-  console.log(`🧠 Groq AI Generating questions for: ${topic}...`);
+  // 1. Random styles to keep it fresh, but focused on India
+  const styles = [
+    "focused on Ancient India (Mauryas, Guptas, etc)",
+    "focused on the Indian Freedom Struggle",
+    "focused on Medieval India (Mughals, Marathas, Cholas)",
+    "focused on Post-Independence Indian History",
+    "focused on Indian Culture and Heritage",
+    "difficult and deep cuts from Indian history",
+    "focused on famous Indian personalities"
+  ];
+  
+  // Pick a random style
+  const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+  const randomSeed = Math.floor(Math.random() * 50000);
+
+  console.log(`🧠 Groq AI Generating: ${topic} (${randomStyle})...`);
+
   try {
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: "You are a quiz generator. Output ONLY a raw JSON array of 10 questions. No Markdown. No explanations."
+          content: "You are an expert on INDIAN History and Culture. Your goal is to test knowledge specifically about India."
         },
         {
           role: "user",
-          content: `Generate 10 multiple-choice questions about "${topic}". 
-          Format: [{"id": 1, "text": "Question?", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]`
+          // INSTRUCTION: FORCE INDIAN CONTEXT
+          content: `Generate 10 UNIQUE multiple-choice questions about "${topic}". 
+          CRITICAL INSTRUCTION: Focus STRICTLY on the INDIAN context. 
+          (e.g., If topic is 'History', ask about Indian History. If 'Kings', ask about Indian Kings).
+          
+          Current Flavor: Make these questions ${randomStyle}.
+          Random Seed: ${randomSeed}.
+          
+          Format: Output ONLY a raw JSON array: [{"id": 1, "text": "Question?", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]`
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.5,
+      temperature: 0.9, 
     });
 
     let text = completion.choices[0]?.message?.content || "";
-    // Clean up any Markdown formatting the AI might add
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    console.log("📝 AI Output:", text.substring(0, 50) + "..."); 
-
     const data = JSON.parse(text);
     return Array.isArray(data) ? data : FALLBACK_QUESTIONS;
 

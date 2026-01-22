@@ -1,23 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 
-// --- IMPORT COMPONENTS ---
-import GameArena from './components/GameArena';
+// --- COMPONENTS ---
 import Background from './components/background';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import SquadHost from './components/SquadHost';
-import DuelModal from './components/DuelModal';
+import Login from './components/Login';         
+import Dashboard from './components/Dashboard'; 
+import SquadHost from './components/SquadHost'; 
+import DuelModal from './components/DuelModal'; 
+
+// ✅ FIX: Importing the file we just created
+import RoomSpace from './components/RoomSpace'; 
+
+import Sidebar from "./components/Sidebar";
+import RankOverview from "./components/RankOverview";
+import History from "./components/History";
+import AIAnalysis from "./components/AIAnalysis";
+import GameArena from './components/GameArena';
+import Grimoire from './components/Grimoire'; 
 
 // --- CONNECT TO SERVER ---
 const socket = io.connect("http://localhost:3001");
 
 function App() {
+  // --- GLOBAL STATE ---
   const [view, setView] = useState('login'); 
   const [username, setUsername] = useState('');
-  const [roomData, setRoomData] = useState(null);
+  
+  // HIS STATE (Rank Progress)
+  const [questionsSolved, setQuestionsSolved] = useState(69);
 
-  // --- DYNAMIC THEME LOGIC ---
+  // GAME & ROOM STATE
+  const [roomData, setRoomData] = useState(null);
+  const [difficulty, setDifficulty] = useState('Moderate');
+  const [inputType, setInputType] = useState('topic');
+  const [topic, setTopic] = useState('');
+  const [roomCode, setRoomCode] = useState('');
+  const [roomPlayers, setRoomPlayers] = useState([]);
+  
+  // FILE & MODALS
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
+  const [show1v1Modal, setShow1v1Modal] = useState(false);
+
+  // --- THEME LOGIC ---
   const getTheme = () => {
     switch(view) {
       case 'login': return 'red';
@@ -25,62 +50,82 @@ function App() {
       case 'host':  return 'purple';
       case 'lobby': return 'green';
       case 'game':  return 'green';
+      case 'grimoire': return 'purple'; 
       default:      return 'red';
     }
   };
 
-  // Game Data
-  const [difficulty, setDifficulty] = useState('Moderate');
-  const [inputType, setInputType] = useState('topic');
-  const [topic, setTopic] = useState('');
-  const [roomCode, setRoomCode] = useState('');
-  const [roomPlayers, setRoomPlayers] = useState([]);
-  
-  // File Upload & Modals
-  const [selectedFile, setSelectedFile] = useState(null);
-  const fileInputRef = useRef(null);
-  const [show1v1Modal, setShow1v1Modal] = useState(false);
-
-useEffect(() => {
-    // 1. Existing listener for multiplayer lobbies
-    socket.on("room_data", (data) => {
+  // --- SOCKET LISTENERS ---
+  useEffect(() => {
+    const handleRoomData = (data) => {
       setRoomPlayers(data.players);
-      setView('lobby'); 
-    });
-
-    // 2. NEW LISTENER: Listen for the AI to finish thinking!
-    socket.on("match_found", (data) => {
-      console.log("⚡ MATCH FOUND! Questions received:", data.questions);
-      setRoomData(data); // Save the AI questions
-      setView('game');   // SWITCH VIEW ONLY NOW
-    });
-
-    // Cleanup listeners to prevent memory leaks
-    return () => {
-      socket.off("room_data");
-      socket.off("match_found");
+      // Only go to lobby if we are NOT in the host/roomspace setup
+      if (view !== 'roomspace' && view !== 'host') {
+        setView('lobby'); 
+      }
     };
-  }, []);
 
+    const handleMatchFound = (data) => {
+      console.log("⚡ MATCH FOUND!", data);
+      setRoomData(data); 
+      setView('game');   
+    };
+
+    socket.on("room_data", handleRoomData);
+    socket.on("match_found", handleMatchFound);
+
+    return () => {
+      socket.off("room_data", handleRoomData);
+      socket.off("match_found", handleMatchFound);
+    };
+  }, [view]); 
+
+  // --- HANDLERS ---
   const handleLogin = () => { if (username.trim()) setView('menu'); };
+  
+  const handleLogout = () => {
+    setUsername('');
+    setRoomData(null);
+    setRoomPlayers([]);
+    setView('login');
+  };
+
   const open1v1Setup = () => { setShow1v1Modal(true); };
   
   const createRoom = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setRoomCode(code);
-    socket.emit("create_room", { username, roomCode: code, config: { topic, difficulty, file: selectedFile?.name } });
+    
+    socket.emit("create_room", { 
+        username, 
+        roomCode: code, 
+        config: { topic, difficulty, file: selectedFile?.name } 
+    });
+
+    // Go to YOUR RoomSpace
+    setView('roomspace'); 
   };
 
-  const handleFileClick = () => { fileInputRef.current.click(); };
+  const handleJoinLobby = () => setView('lobby');
+  const handleFileClick = () => fileInputRef.current.click();
   const handleFileChange = (e) => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); };
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden text-white bg-black" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
       
-      {/* 1. BACKGROUND LAYER */}
+      {/* 1. BACKGROUND */}
       <Background theme={getTheme()} />
 
-      {/* 2. MAIN CONTENT LAYER */}
+      {/* 2. SIDEBAR */}
+      {view !== "login" && (
+        <Sidebar
+          username={username}
+          setView={setView}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* 3. MAIN CONTENT */}
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
         
         {view === 'login' && (
@@ -88,9 +133,21 @@ useEffect(() => {
         )}
 
         {view === 'menu' && (
-          <Dashboard username={username} setView={setView} open1v1Setup={open1v1Setup} />
+          <Dashboard 
+            username={username} 
+            setView={setView} 
+            open1v1Setup={open1v1Setup}
+            questionsSolved={questionsSolved} 
+          />
         )}
 
+        {/* OTHER PAGES */}
+        {view === 'grimoire' && <Grimoire setView={setView} username={username} />}
+        {view === 'rank' && <RankOverview questionsSolved={questionsSolved} />}
+        {view === 'history' && <History />}
+        {view === 'analysis' && <AIAnalysis />}
+
+        {/* HOST PAGE */}
         {view === 'host' && (
           <SquadHost 
             setView={setView} 
@@ -102,22 +159,32 @@ useEffect(() => {
           />
         )}
 
+        {/* ✅ ROOMSPACE PAGE (Now working) */}
+        {view === 'roomspace' && (
+          <RoomSpace 
+            roomCode={roomCode}
+            topic={topic}
+            inputType={inputType} 
+            username={username}
+            onJoin={handleJoinLobby}
+            onExit={() => setView('host')} 
+          />
+        )}
+
+        {/* LOBBY */}
         {view === 'lobby' && (
            <div className="text-center animate-[fadeIn_0.5s]">
-              <p className="text-green-500 font-bold tracking-[0.3em] uppercase mb-6 text-xs">Access Code Generated</p>
               <h2 className="text-9xl font-bold mb-8 text-white">{roomCode}</h2>
-              <div className="flex justify-center gap-12 mb-20">
+              <div className="flex justify-center gap-6 mb-12">
                  {roomPlayers.map((p, i) => (
-                    <div key={i} className="flex flex-col items-center gap-4">
-                       <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-3xl border border-white/20 shadow-[0_0_20px_rgba(34,197,94,0.2)]">🧙‍♂️</div>
-                       <span className="font-bold text-sm tracking-widest uppercase text-green-400">{p}</span>
-                    </div>
+                    <span key={i} className="text-green-400 font-bold text-xl uppercase tracking-widest">{p}</span>
                  ))}
               </div>
-              <button onClick={() => setView('game')} className="px-12 py-4 bg-green-600 text-black rounded-full font-bold hover:scale-105 transition-all shadow-[0_0_40px_rgba(34,197,94,0.4)]">ENTER MATRIX</button>
+              <button onClick={() => setView('game')} className="px-12 py-4 bg-green-600 text-black rounded-full font-bold hover:scale-105 transition-transform">START GAME</button>
            </div>
         )}
 
+        {/* GAME ARENA */}
         {view === 'game' && (
            <GameArena 
              socket={socket} 
@@ -129,8 +196,7 @@ useEffect(() => {
 
       </div>
 
-      {/* 3. MODAL LAYER (MOVED OUTSIDE) */}
-      {/* This ensures the modal sits on top of everything and is clickable */}
+      {/* MODAL LAYER */}
       {show1v1Modal && (
           <DuelModal 
             socket={socket}             
