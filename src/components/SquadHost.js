@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // --- ICONS ---
 const IconArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>;
@@ -24,6 +24,26 @@ const SquadHost = ({
   
   // Define Helvetica Font Style
   const fontStyle = { fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" };
+
+  // --- NEW: Handle Enter Key Press ---
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Check if Enter is pressed
+      if (event.key === 'Enter') {
+        // Prevent default behavior if needed (though not strictly necessary here)
+        event.preventDefault(); 
+        createRoom();
+      }
+    };
+
+    // Add event listener to the window
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [createRoom]); // Depend on createRoom so it uses the latest version of the function
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center animate-[slideUp_0.8s_cubic-bezier(0.16,1,0.3,1)]" style={fontStyle}>

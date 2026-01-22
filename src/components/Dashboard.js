@@ -46,7 +46,11 @@ const Dashboard = ({ username, setView, open1v1Setup }) => {
           <p className="text-gray-300 mt-6 font-bold">Rank: <span className="text-purple-400 font-extrabold">Adept Wizard</span></p>
         </div>
 
-        <button onClick={open1v1Setup} className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white font-bold hover:scale-105 transition mt-6 md:mt-0 flex items-center gap-2">
+        {/* JOIN BUTTON */}
+        <button 
+          onClick={open1v1Setup}
+          className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white font-bold hover:scale-105 transition mt-6 md:mt-0 flex items-center gap-2 uppercase tracking-widest"
+        >
           Join Match ✨
         </button>
       </div>
