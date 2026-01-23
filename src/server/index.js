@@ -16,7 +16,11 @@ const io = new Server(server, {
   },
 });
 
-// Check if API Key exists
+// --- 1. GLOBAL STORAGE (FROM TEAM) ---
+// Critical for Join Page to show Topic/Host/Count
+const roomInfo = {}; 
+
+// --- 2. CONFIGURATION & SAFETY CHECKS ---
 if (!process.env.GROQ_API_KEY) {
   console.error("❌ FATAL ERROR: GROQ_API_KEY is missing in .env file!");
 }
@@ -50,7 +54,7 @@ function cleanJson(text) {
   return clean.trim();
 }
 
-// --- AGENT 1: STEM QUIZ ---
+// --- AGENT 1: STEM QUIZ (YOUR ROBUST VERSION) ---
 async function agentStemQuiz(topic, difficulty) {
   const seed = Date.now();
   console.log(`🧪 Quiz Agent: Requesting "${topic}" (Seed: ${seed})`);
@@ -89,7 +93,7 @@ async function agentStemQuiz(topic, difficulty) {
   }
 }
 
-// --- AGENT 2: CAREER GUIDANCE (DEBUG MODE) ---
+// --- AGENT 2: CAREER GUIDANCE (YOUR DEBUG MODE VERSION) ---
 async function agentCareerGuidance(profile) {
   console.log(`🚀 Career Agent: Analyzing ${profile.name}...`);
 
@@ -121,12 +125,10 @@ async function agentCareerGuidance(profile) {
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.1, // Low temp to prevent errors
+      temperature: 0.1, 
     });
 
     const text = completion.choices[0]?.message?.content || "";
-    console.log("📝 AI Response Received (Raw length):", text.length);
-
     const cleanedText = cleanJson(text);
     
     if (!cleanedText) throw new Error("Empty response from AI");
@@ -136,7 +138,7 @@ async function agentCareerGuidance(profile) {
   } catch (error) {
     console.error("❌ Career Agent Failed:", error.message);
     
-    // ✅ FALLBACK DATA (This ensures the UI never breaks)
+    // Fallback Data
     return {
       recommended_careers: [
         { title: "Software Engineer", match_score: "95%", reason: "Fallback: Matches your tech skills." },
@@ -159,6 +161,7 @@ async function agentCareerGuidance(profile) {
 io.on('connection', (socket) => {
   console.log(`⚡ User Connected: ${socket.id}`);
 
+  // --- 1. SINGLE PLAYER / BOT MATCH (YOUR FEATURE) ---
   socket.on('find_match', async ({ username, topic, difficulty }) => {
     const roomCode = `room_${socket.id}`;
     socket.join(roomCode);
@@ -176,11 +179,74 @@ io.on('connection', (socket) => {
     });
   });
 
+  // --- 2. CAREER ADVICE (YOUR FEATURE) ---
   socket.on('get_career_advice', async (userProfile) => {
     console.log("📩 Received Career Request for:", userProfile.name);
     const careerData = await agentCareerGuidance(userProfile);
     console.log("📤 Sending Results back to Client...");
     socket.emit("career_advice_result", careerData);
+  });
+
+  // --- 3. SQUAD HOSTING (TEAM FEATURE) ---
+  socket.on("create_room", (data) => {
+    const { username, roomCode, config } = data;
+    socket.join(roomCode);
+    
+    // Save details for Join Page
+    roomInfo[roomCode] = {
+      host: username,
+      topic: config?.topic || "General Magic",
+      file: config?.file
+    };
+
+    console.log(`🏰 Room Created: ${roomCode} by ${username}`);
+    
+    // Send update so host enters lobby
+    io.to(roomCode).emit("room_data", { 
+        players: [username], 
+        roomCode 
+    });
+  });
+
+  // --- 4. JOIN PAGE CHECK (TEAM FEATURE) ---
+  socket.on("check_room", (roomCode) => {
+    const room = io.sockets.adapter.rooms.get(roomCode);
+    const info = roomInfo[roomCode];
+
+    if (room && info) {
+      socket.emit("room_preview", { 
+        exists: true, 
+        name: `Room ${roomCode}`, 
+        topic: info.topic,
+        host: info.host,
+        count: room.size 
+      });
+    } else {
+      socket.emit("room_preview", { exists: false });
+    }
+  });
+
+  // --- 5. JOIN ROOM (TEAM FEATURE) ---
+  socket.on("join_room", (data) => {
+    const { roomCode, username } = data;
+    const room = io.sockets.adapter.rooms.get(roomCode);
+
+    if (room) {
+      socket.join(roomCode);
+      console.log(`👋 ${username} joined ${roomCode}`);
+
+      // Basic logic to update player list
+      // Note: This is a simple mock list. You'll likely want to store real player objects in roomInfo later.
+      const playerCount = room.size;
+      const players = Array(playerCount).fill("Wizard");
+      players[players.length - 1] = username; 
+
+      io.to(roomCode).emit("room_data", { players, roomCode });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔥 Wizard Disconnected');
   });
 });
 
