@@ -1,22 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 
-// --- COMPONENTS ---
+// --- EXISTING IMPORTS ---
 import Background from './components/background';
 import Login from './components/Login';         
 import Dashboard from './components/Dashboard'; 
 import SquadHost from './components/SquadHost'; 
 import DuelModal from './components/DuelModal'; 
-
-// ✅ FIX: Importing the file we just created
 import RoomSpace from './components/RoomSpace'; 
 
+// HIS FEATURES
 import Sidebar from "./components/Sidebar";
 import RankOverview from "./components/RankOverview";
 import History from "./components/History";
 import AIAnalysis from "./components/AIAnalysis";
 import GameArena from './components/GameArena';
 import Grimoire from './components/Grimoire'; 
+
+// --- [NEW] IMPORT JOIN ROOM ---
+import JoinRoom from './components/JoinRoom'; 
 
 // --- CONNECT TO SERVER ---
 const socket = io.connect("http://localhost:3001");
@@ -26,7 +28,7 @@ function App() {
   const [view, setView] = useState('login'); 
   const [username, setUsername] = useState('');
   
-  // HIS STATE (Rank Progress)
+  // HIS STATE
   const [questionsSolved, setQuestionsSolved] = useState(69);
 
   // GAME & ROOM STATE
@@ -42,29 +44,32 @@ function App() {
   const fileInputRef = useRef(null);
   const [show1v1Modal, setShow1v1Modal] = useState(false);
 
-  // --- THEME LOGIC ---
+  // --- THEME LOGIC (Updated) ---
   const getTheme = () => {
     switch(view) {
       case 'login': return 'red';
       case 'menu':  return 'blue';
       case 'host':  return 'purple';
+      case 'join':  return 'purple'; // <--- ADDED: Purple theme for Join Page
       case 'lobby': return 'green';
       case 'game':  return 'green';
-      case 'grimoire': return 'purple'; 
+      case 'grimoire': return 'purple';
       default:      return 'red';
     }
   };
 
-  // --- SOCKET LISTENERS ---
+  // --- LISTENERS ---
   useEffect(() => {
+    // 1. Room Data Listener
     const handleRoomData = (data) => {
       setRoomPlayers(data.players);
-      // Only go to lobby if we are NOT in the host/roomspace setup
+      // If we are in 'join' mode or 'host' mode, move to 'lobby' when data arrives
       if (view !== 'roomspace' && view !== 'host') {
         setView('lobby'); 
       }
     };
 
+    // 2. Match Found Listener
     const handleMatchFound = (data) => {
       console.log("⚡ MATCH FOUND!", data);
       setRoomData(data); 
@@ -96,13 +101,12 @@ function App() {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setRoomCode(code);
     
+    // Updated to send full config (topic/file) for the new Join Page logic
     socket.emit("create_room", { 
         username, 
         roomCode: code, 
         config: { topic, difficulty, file: selectedFile?.name } 
     });
-
-    // Go to YOUR RoomSpace
     setView('roomspace'); 
   };
 
@@ -113,19 +117,12 @@ function App() {
   return (
     <div className="relative w-full min-h-screen overflow-hidden text-white bg-black" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
       
-      {/* 1. BACKGROUND */}
       <Background theme={getTheme()} />
 
-      {/* 2. SIDEBAR */}
       {view !== "login" && (
-        <Sidebar
-          username={username}
-          setView={setView}
-          onLogout={handleLogout}
-        />
+        <Sidebar username={username} setView={setView} onLogout={handleLogout} />
       )}
 
-      {/* 3. MAIN CONTENT */}
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
         
         {view === 'login' && (
@@ -141,13 +138,22 @@ function App() {
           />
         )}
 
+        {/* --- [NEW] JOIN ROOM PAGE --- */}
+        {view === 'join' && (
+          <JoinRoom 
+            socket={socket} 
+            setView={setView} 
+            username={username} 
+          />
+        )}
+
         {/* OTHER PAGES */}
         {view === 'grimoire' && <Grimoire setView={setView} username={username} />}
         {view === 'rank' && <RankOverview questionsSolved={questionsSolved} />}
         {view === 'history' && <History />}
         {view === 'analysis' && <AIAnalysis />}
 
-        {/* HOST PAGE */}
+        {/* YOUR HOST PAGE */}
         {view === 'host' && (
           <SquadHost 
             setView={setView} 
@@ -159,7 +165,7 @@ function App() {
           />
         )}
 
-        {/* ✅ ROOMSPACE PAGE (Now working) */}
+        {/* YOUR ROOMSPACE PAGE */}
         {view === 'roomspace' && (
           <RoomSpace 
             roomCode={roomCode}
@@ -180,31 +186,17 @@ function App() {
                     <span key={i} className="text-green-400 font-bold text-xl uppercase tracking-widest">{p}</span>
                  ))}
               </div>
-              <button onClick={() => setView('game')} className="px-12 py-4 bg-green-600 text-black rounded-full font-bold hover:scale-105 transition-transform">START GAME</button>
+              <p className="text-gray-400">Waiting for host to start...</p>
            </div>
         )}
 
-        {/* GAME ARENA */}
-        {view === 'game' && (
-           <GameArena 
-             socket={socket} 
-             roomData={roomData} 
-             username={username} 
-             setView={setView} 
-           />
-        )}
+        {/* GAME */}
+        {view === 'game' && <GameArena socket={socket} roomData={roomData} username={username} setView={setView} />}
 
       </div>
 
-      {/* MODAL LAYER */}
       {show1v1Modal && (
-          <DuelModal 
-            socket={socket}             
-            username={username}         
-            setRoomData={setRoomData}   
-            setView={setView}           
-            setShow1v1Modal={setShow1v1Modal} 
-          />
+          <DuelModal socket={socket} username={username} setRoomData={setRoomData} setView={setView} setShow1v1Modal={setShow1v1Modal} />
       )}
 
     </div>
