@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 
 // --- EXISTING IMPORTS ---
 import Background from './components/background';
-import Login from './components/Login';         
+import Login from './components/Login'; 
 import Dashboard from './components/Dashboard'; 
 import SquadHost from './components/SquadHost'; 
 import DuelModal from './components/DuelModal'; 
@@ -16,8 +16,6 @@ import History from "./components/History";
 import AIAnalysis from "./components/AIAnalysis";
 import GameArena from './components/GameArena';
 import Grimoire from './components/Grimoire'; 
-
-// --- [NEW] IMPORT JOIN ROOM ---
 import JoinRoom from './components/JoinRoom'; 
 
 // --- CONNECT TO SERVER ---
@@ -26,10 +24,16 @@ const socket = io.connect("http://localhost:3001");
 function App() {
   // --- GLOBAL STATE ---
   const [view, setView] = useState('login'); 
-  const [username, setUsername] = useState('');
   
-  // --- [FIXED] PROGRESS TRACKING STATE ---
-  const [questionsSolved, setQuestionsSolved] = useState(69); // Start with demo value
+  // 1. Load Name from Storage
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('wizardName') || '';
+  });
+  
+  // 2. Load Score from Storage (Fixes Reset Bug)
+  const [questionsSolved, setQuestionsSolved] = useState(() => {
+    return parseInt(localStorage.getItem('wizardScore')) || 50; 
+  });
 
   // GAME & ROOM STATE
   const [roomData, setRoomData] = useState(null);
@@ -58,12 +62,35 @@ function App() {
     }
   };
 
-  // --- [NEW] GAME END HANDLER (Fixes Monthly Progress) ---
+  // --- SAVE DATA AUTOMATICALLY ---
+  // This ensures your Monthly Progress survives a refresh
+  useEffect(() => {
+    localStorage.setItem('wizardName', username);
+    localStorage.setItem('wizardScore', questionsSolved);
+  }, [username, questionsSolved]);
+
+  // --- GAME END HANDLER ---
   const handleGameEnd = (scoreFromGame) => {
     console.log("🏆 Game Finished! Adding score:", scoreFromGame);
+    
+    // 1. Update Score (Only Once!)
     setQuestionsSolved(prev => prev + scoreFromGame);
-    // You can optionally force a return to dashboard here:
-    // setView('menu');
+
+    // 2. Save to Grimoire
+    const newBattle = {
+      id: Date.now(),
+      type: "1v1",
+      topic: topic || "General Magic",
+      opponent: "StemBot",
+      myScore: scoreFromGame,
+      opScore: Math.floor(Math.random() * 8), // Fake opponent score
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      result: scoreFromGame > 5 ? "Victory" : "Defeat"
+    };
+
+    const currentHistory = JSON.parse(localStorage.getItem('wizardBattleLog') || "[]");
+    const updatedHistory = [newBattle, ...currentHistory];
+    localStorage.setItem('wizardBattleLog', JSON.stringify(updatedHistory));
   };
 
   // --- LISTENERS ---
@@ -138,11 +165,10 @@ function App() {
             username={username} 
             setView={setView} 
             open1v1Setup={open1v1Setup}
-            questionsSolved={questionsSolved} // <--- PASSING SCORE
+            questionsSolved={questionsSolved} 
           />
         )}
 
-        {/* --- JOIN ROOM PAGE --- */}
         {view === 'join' && (
           <JoinRoom 
             socket={socket} 
@@ -151,13 +177,11 @@ function App() {
           />
         )}
 
-        {/* OTHER PAGES */}
         {view === 'grimoire' && <Grimoire setView={setView} username={username} />}
         {view === 'rank' && <RankOverview questionsSolved={questionsSolved} />}
         {view === 'history' && <History />}
         {view === 'analysis' && <AIAnalysis />}
 
-        {/* HOST PAGE */}
         {view === 'host' && (
           <SquadHost 
             setView={setView} 
@@ -169,7 +193,6 @@ function App() {
           />
         )}
 
-        {/* ROOMSPACE PAGE */}
         {view === 'roomspace' && (
           <RoomSpace 
             roomCode={roomCode}
@@ -181,7 +204,6 @@ function App() {
           />
         )}
 
-        {/* LOBBY */}
         {view === 'lobby' && (
             <div className="text-center animate-[fadeIn_0.5s]">
               <h2 className="text-9xl font-bold mb-8 text-white">{roomCode}</h2>
@@ -194,14 +216,13 @@ function App() {
             </div>
         )}
 
-        {/* GAME */}
         {view === 'game' && (
           <GameArena 
              socket={socket} 
              roomData={roomData} 
              username={username} 
              setView={setView} 
-             onGameEnd={handleGameEnd} // <--- PASSING UPDATER
+             onGameEnd={handleGameEnd} 
           />
         )}
 

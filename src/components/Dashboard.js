@@ -22,20 +22,16 @@ const quotes = [
 const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => {
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
   
-  // --- DYNAMIC PROGRESS LOGIC ---
-  // Max goal is 100 questions for the visual bar
-  // We add 50 to the solved count just for the visual demo so it's not empty at start
-  const currentMonthValue = Math.min(questionsSolved + 50, 100); 
-  
+  // --- REORDERED MONTHS (Jan at Top) ---
   const monthlyProgress = [
-    { month: "Jan", solved: 22 },
-    { month: "Feb", solved: 35 },
-    { month: "Mar", solved: 41 },
-    { month: "Apr", solved: 18 },
-    { month: "May", solved: currentMonthValue } // <--- NOW DYNAMIC
+    { month: "Jan", solved: questionsSolved }, // <--- LIVE SCORE AT TOP
+    { month: "Feb", solved: 0 },
+    { month: "Mar", solved: 0 },
+    { month: "Apr", solved: 0 },
+    { month: "May", solved: 0 }
   ];
 
-  const maxSolved = 100; // Fixed scale for consistency
+  const maxGoal = 20; // Visual Scale
 
   // Use imported icons if available, else local fallback
   const ScrollIcon = IconScroll || LocalIconScroll;
@@ -85,7 +81,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           </div>
         </div>
 
-        {/* 3. MONTHLY PROGRESS (REVERTED TO SLEEK BARS) */}
+        {/* 3. MONTHLY PROGRESS (REORDERED: JAN TOP) */}
         <div className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 hover:scale-[1.02] transition">
           <h3 className="text-lg font-bold text-white mb-4">Monthly Progress</h3>
           <div className="space-y-3">
@@ -93,14 +89,14 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
               <div key={i}>
                 <div className="flex justify-between text-sm mb-1 text-gray-400">
                   <span>{m.month}</span>
-                  <span className={`font-bold ${m.month === 'May' ? 'text-green-400' : 'text-purple-300'}`}>
+                  <span className={`font-bold ${m.month === 'Jan' ? 'text-green-400' : 'text-purple-300'}`}>
                     {m.solved}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-white/10 rounded overflow-hidden">
                   <div 
-                    className={`h-2 rounded transition-all duration-1000 ${m.month === 'May' ? 'bg-green-500' : 'bg-purple-500'}`} 
-                    style={{ width: `${(m.solved / maxSolved) * 100}%` }} 
+                    className={`h-2 rounded transition-all duration-1000 ${m.month === 'Jan' ? 'bg-green-500' : 'bg-purple-500'}`} 
+                    style={{ width: `${Math.min((m.solved / maxGoal) * 100, 100)}%` }} 
                   />
                 </div>
               </div>
@@ -108,7 +104,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           </div>
         </div>
 
-        {/* 4. AI INSIGHT (FIXED CLICK HANDLER) */}
+        {/* 4. AI INSIGHT */}
         <div 
           onClick={() => setView('analysis')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 hover:scale-[1.02] transition cursor-pointer hover:border-blue-500/30 group relative overflow-hidden"
@@ -125,7 +121,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           </div>
         </div>
 
-        {/* 5. GRIMOIRE CARD (FIXED ALIGNMENT) */}
+        {/* 5. GRIMOIRE CARD */}
         <div 
           onClick={() => setView('grimoire')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 cursor-pointer transition-all duration-500 group hover:scale-[1.02] hover:border-yellow-600/50 hover:shadow-[0_0_40px_rgba(234,179,8,0.2)] relative overflow-hidden"
