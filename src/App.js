@@ -17,7 +17,7 @@ import AIAnalysis from "./components/AIAnalysis";
 import GameArena from './components/GameArena';
 import Grimoire from './components/Grimoire'; 
 
-// --- [NEW] IMPORT JOIN ROOM ---
+// --- JOIN ROOM ---
 import JoinRoom from './components/JoinRoom'; 
 
 // --- CONNECT TO SERVER ---
@@ -28,8 +28,11 @@ function App() {
   const [view, setView] = useState('login'); 
   const [username, setUsername] = useState('');
   
-  // --- [FIXED] PROGRESS TRACKING STATE ---
-  const [questionsSolved, setQuestionsSolved] = useState(69); // Start with demo value
+  // --- AVATAR STATE ---
+  const [avatarSeed, setAvatarSeed] = useState('felix'); 
+
+  // --- PROGRESS TRACKING STATE ---
+  const [questionsSolved, setQuestionsSolved] = useState(69);
 
   // GAME & ROOM STATE
   const [roomData, setRoomData] = useState(null);
@@ -58,15 +61,11 @@ function App() {
     }
   };
 
-  // --- [NEW] GAME END HANDLER (Fixes Monthly Progress) ---
   const handleGameEnd = (scoreFromGame) => {
     console.log("🏆 Game Finished! Adding score:", scoreFromGame);
     setQuestionsSolved(prev => prev + scoreFromGame);
-    // You can optionally force a return to dashboard here:
-    // setView('menu');
   };
 
-  // --- LISTENERS ---
   useEffect(() => {
     const handleRoomData = (data) => {
       setRoomPlayers(data.players);
@@ -90,8 +89,12 @@ function App() {
     };
   }, [view]); 
 
-  // --- HANDLERS ---
-  const handleLogin = () => { if (username.trim()) setView('menu'); };
+  const handleLogin = () => { 
+    if (username.trim()) {
+        setAvatarSeed(username);
+        setView('menu'); 
+    }
+  };
   
   const handleLogout = () => {
     setUsername('');
@@ -123,8 +126,16 @@ function App() {
       
       <Background theme={getTheme()} />
 
-      {view !== "login" && (
-        <Sidebar username={username} setView={setView} onLogout={handleLogout} />
+      {/* --- SIDEBAR: ONLY SHOW IN DASHBOARD ('menu') --- */}
+      {view === 'menu' && (
+        <Sidebar 
+          username={username} 
+          setUsername={setUsername} 
+          avatarSeed={avatarSeed}   
+          setAvatarSeed={setAvatarSeed} 
+          setView={setView} 
+          onLogout={handleLogout} 
+        />
       )}
 
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
@@ -138,11 +149,10 @@ function App() {
             username={username} 
             setView={setView} 
             open1v1Setup={open1v1Setup}
-            questionsSolved={questionsSolved} // <--- PASSING SCORE
+            questionsSolved={questionsSolved} 
           />
         )}
 
-        {/* --- JOIN ROOM PAGE --- */}
         {view === 'join' && (
           <JoinRoom 
             socket={socket} 
@@ -151,13 +161,13 @@ function App() {
           />
         )}
 
-        {/* OTHER PAGES */}
         {view === 'grimoire' && <Grimoire setView={setView} username={username} />}
-        {view === 'rank' && <RankOverview questionsSolved={questionsSolved} />}
+        {view === 'rank' && <RankOverview questionsSolved={questionsSolved} setView={setView} />}
         {view === 'history' && <History />}
-        {view === 'analysis' && <AIAnalysis />}
+        
+        {/* PASS setView HERE */}
+        {view === 'analysis' && <AIAnalysis setView={setView} />}
 
-        {/* HOST PAGE */}
         {view === 'host' && (
           <SquadHost 
             setView={setView} 
@@ -169,7 +179,6 @@ function App() {
           />
         )}
 
-        {/* ROOMSPACE PAGE */}
         {view === 'roomspace' && (
           <RoomSpace 
             roomCode={roomCode}
@@ -181,7 +190,6 @@ function App() {
           />
         )}
 
-        {/* LOBBY */}
         {view === 'lobby' && (
             <div className="text-center animate-[fadeIn_0.5s]">
               <h2 className="text-9xl font-bold mb-8 text-white">{roomCode}</h2>
@@ -194,14 +202,13 @@ function App() {
             </div>
         )}
 
-        {/* GAME */}
         {view === 'game' && (
           <GameArena 
              socket={socket} 
              roomData={roomData} 
              username={username} 
              setView={setView} 
-             onGameEnd={handleGameEnd} // <--- PASSING UPDATER
+             onGameEnd={handleGameEnd} 
           />
         )}
 

@@ -1,7 +1,15 @@
 import React from "react";
 import { ranks, getRank } from "./rank-system";
 
-function RankOverview({ questionsSolved = 0 }) {
+// --- ICON ---
+const IconArrowLeft = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+  </svg>
+);
+
+// Added 'setView' prop
+function RankOverview({ questionsSolved = 0, setView }) {
   const currentRankName = getRank(questionsSolved);
   const currentRankIndex = ranks.findIndex(
     (r) => r.name === currentRankName
@@ -20,7 +28,21 @@ function RankOverview({ questionsSolved = 0 }) {
     : 100;
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-10 text-white">
+    <div className="w-full max-w-3xl mx-auto p-10 text-white animate-[fadeIn_0.5s]">
+      
+      {/* --- RETURN BUTTON (Pink to match Progress Bar) --- */}
+      <div className="w-full flex items-center justify-start mb-8">
+        <button 
+          onClick={() => setView('menu')}
+          className="group flex items-center gap-3 text-pink-500 hover:text-pink-400 transition-colors px-2 py-2"
+        >
+          <div className="transform group-hover:-translate-x-1 transition-transform duration-300">
+            <IconArrowLeft />
+          </div>
+          <span className="text-sm font-bold tracking-[0.2em] uppercase">Return</span>
+        </button>
+      </div>
+
       <h1 className="text-4xl font-bold mb-8">🏆 Rank Overview</h1>
 
       {/* CURRENT RANK */}

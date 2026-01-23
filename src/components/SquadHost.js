@@ -168,7 +168,7 @@ const SquadHost = ({
             className="w-full group relative overflow-hidden bg-white text-black font-bold uppercase tracking-[0.2em] py-5 rounded-xl hover:bg-purple-500 hover:text-white transition-all duration-500 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(168,85,247,0.4)]"
           >
             <span className="relative z-10 flex items-center justify-center gap-3">
-              Generate Room Code
+              Create A Room
               <div className="group-hover:translate-x-1 transition-transform duration-300">
                 <IconArrowRight />
               </div>
