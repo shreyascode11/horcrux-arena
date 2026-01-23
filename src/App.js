@@ -25,12 +25,15 @@ function App() {
   // --- GLOBAL STATE ---
   const [view, setView] = useState('login'); 
   
-  // 1. Load Name from Storage
+  // 1. Load Name from Storage (Persistence)
   const [username, setUsername] = useState(() => {
     return localStorage.getItem('wizardName') || '';
   });
+
+  // 2. Avatar State (From Team Update)
+  const [avatarSeed, setAvatarSeed] = useState('felix'); 
   
-  // 2. Load Score from Storage (Fixes Reset Bug)
+  // 3. Load Score from Storage (Fixes Reset Bug)
   const [questionsSolved, setQuestionsSolved] = useState(() => {
     return parseInt(localStorage.getItem('wizardScore')) || 50; 
   });
@@ -93,7 +96,6 @@ function App() {
     localStorage.setItem('wizardBattleLog', JSON.stringify(updatedHistory));
   };
 
-  // --- LISTENERS ---
   useEffect(() => {
     const handleRoomData = (data) => {
       setRoomPlayers(data.players);
@@ -117,8 +119,13 @@ function App() {
     };
   }, [view]); 
 
-  // --- HANDLERS ---
-  const handleLogin = () => { if (username.trim()) setView('menu'); };
+  const handleLogin = () => { 
+    if (username.trim()) {
+        // Set the avatar seed based on username for consistency
+        setAvatarSeed(username);
+        setView('menu'); 
+    }
+  };
   
   const handleLogout = () => {
     setUsername('');
@@ -150,8 +157,16 @@ function App() {
       
       <Background theme={getTheme()} />
 
-      {view !== "login" && (
-        <Sidebar username={username} setView={setView} onLogout={handleLogout} />
+      {/* --- SIDEBAR: ONLY SHOW IN DASHBOARD ('menu') --- */}
+      {view === 'menu' && (
+        <Sidebar 
+          username={username} 
+          setUsername={setUsername} 
+          avatarSeed={avatarSeed}   
+          setAvatarSeed={setAvatarSeed} 
+          setView={setView} 
+          onLogout={handleLogout} 
+        />
       )}
 
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
@@ -178,9 +193,11 @@ function App() {
         )}
 
         {view === 'grimoire' && <Grimoire setView={setView} username={username} />}
-        {view === 'rank' && <RankOverview questionsSolved={questionsSolved} />}
+        {view === 'rank' && <RankOverview questionsSolved={questionsSolved} setView={setView} />}
         {view === 'history' && <History />}
-        {view === 'analysis' && <AIAnalysis />}
+        
+        {/* PASS setView HERE */}
+        {view === 'analysis' && <AIAnalysis setView={setView} />}
 
         {view === 'host' && (
           <SquadHost 

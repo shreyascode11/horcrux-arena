@@ -4,7 +4,7 @@ import { IconSword, IconUsers, IconLogout, IconArrowRight, IconScroll } from './
 
 // Fallback if Icons are missing to prevent crash
 const LocalIconScroll = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2-2h10a2 2 0 0 1 2-2z"></path></svg>
 );
 const LocalIconArrowRight = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -18,11 +18,13 @@ const quotes = [
   "Every great wizard in history has started out as nothing more than we are now."
 ];
 
-// Pass 'questionsSolved' as a new prop
 const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => {
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
   
-  // --- REORDERED MONTHS (Jan at Top) ---
+  // --- REORDERED MONTHS (Jan at Top) with DYNAMIC PROGRESS LOGIC ---
+  // Using the logic where Jan reflects the live score.
+  // Assuming questionsSolved is the live score passed from App.js
+  
   const monthlyProgress = [
     { month: "Jan", solved: questionsSolved }, // <--- LIVE SCORE AT TOP
     { month: "Feb", solved: 0 },
@@ -38,7 +40,8 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
   const ArrowIcon = IconArrowRight || LocalIconArrowRight;
 
   return (
-    <div className="w-full h-full animate-fade-in max-w-7xl">
+    // --- UPDATED CLASS: Added 'ml-24' to push content right of the sidebar ---
+    <div className="w-full h-full animate-fade-in max-w-7xl ml-24">
 
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-white/5 pb-8">
@@ -49,12 +52,12 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           <p className="text-gray-300 mt-6 font-bold">Rank: <span className="text-purple-400 font-extrabold">Adept Wizard</span></p>
         </div>
 
-        {/* JOIN BUTTON */}
+        {/* --- ENTER CODE BUTTON --- */}
         <button 
-          onClick={open1v1Setup}
+          onClick={() => setView('join')} 
           className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white font-bold hover:scale-105 transition mt-6 md:mt-0 flex items-center gap-2 uppercase tracking-widest"
         >
-          Join Match ✨
+          ENTER CODE ✨
         </button>
       </div>
 
@@ -104,37 +107,33 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           </div>
         </div>
 
-        {/* 4. AI INSIGHT */}
+        {/* 4. CAREER GUIDANCE */}
         <div 
           onClick={() => setView('analysis')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 hover:scale-[1.02] transition cursor-pointer hover:border-blue-500/30 group relative overflow-hidden"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="relative z-10">
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-200 transition-colors">AI Insight</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Click here to analyze your learning gaps and get career recommendations.
+          <div className="relative z-10 h-full flex flex-col">
+            <h3 className="text-4xl font-bold text-white mb-4 group-hover:text-blue-200 transition-colors">Career Guidance</h3>
+            <p className="text-gray-400 leading-relaxed mb-12">
+              Analyze your learning gaps and get career recommendations.
             </p>
-            <div className="mt-4 flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-widest">
+            <div className="absolute bottom-8 right-8 flex items-center gap-2 text-blue-400 text-xs font-bold uppercase tracking-widest">
               <span>Open Analysis</span> <ArrowIcon />
             </div>
           </div>
         </div>
 
-        {/* 5. GRIMOIRE CARD */}
+        {/* 5. GRIMOIRE CARD (HISTORY) */}
         <div 
           onClick={() => setView('grimoire')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 cursor-pointer transition-all duration-500 group hover:scale-[1.02] hover:border-yellow-600/50 hover:shadow-[0_0_40px_rgba(234,179,8,0.2)] relative overflow-hidden"
           style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}
         >
-          {/* Yellow Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-900/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           
           <div className="relative z-10 flex flex-col h-full">
-            {/* Title */}
-            <h3 className="text-4xl font-bold text-white mb-4 group-hover:text-yellow-100 transition-colors">Grimoire</h3>
-            
-            {/* Description */}
+            <h3 className="text-4xl font-bold text-white mb-4 group-hover:text-yellow-100 transition-colors">History</h3>
             <p className="text-gray-400 leading-relaxed group-hover:text-gray-300">
               Access your archives. Review past battles and magical growth.
             </p>
