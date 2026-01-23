@@ -28,8 +28,8 @@ function App() {
   const [view, setView] = useState('login'); 
   const [username, setUsername] = useState('');
   
-  // HIS STATE
-  const [questionsSolved, setQuestionsSolved] = useState(69);
+  // --- [FIXED] PROGRESS TRACKING STATE ---
+  const [questionsSolved, setQuestionsSolved] = useState(69); // Start with demo value
 
   // GAME & ROOM STATE
   const [roomData, setRoomData] = useState(null);
@@ -44,13 +44,13 @@ function App() {
   const fileInputRef = useRef(null);
   const [show1v1Modal, setShow1v1Modal] = useState(false);
 
-  // --- THEME LOGIC (Updated) ---
+  // --- THEME LOGIC ---
   const getTheme = () => {
     switch(view) {
       case 'login': return 'red';
       case 'menu':  return 'blue';
       case 'host':  return 'purple';
-      case 'join':  return 'purple'; // <--- ADDED: Purple theme for Join Page
+      case 'join':  return 'purple';
       case 'lobby': return 'green';
       case 'game':  return 'green';
       case 'grimoire': return 'purple';
@@ -58,18 +58,23 @@ function App() {
     }
   };
 
+  // --- [NEW] GAME END HANDLER (Fixes Monthly Progress) ---
+  const handleGameEnd = (scoreFromGame) => {
+    console.log("🏆 Game Finished! Adding score:", scoreFromGame);
+    setQuestionsSolved(prev => prev + scoreFromGame);
+    // You can optionally force a return to dashboard here:
+    // setView('menu');
+  };
+
   // --- LISTENERS ---
   useEffect(() => {
-    // 1. Room Data Listener
     const handleRoomData = (data) => {
       setRoomPlayers(data.players);
-      // If we are in 'join' mode or 'host' mode, move to 'lobby' when data arrives
       if (view !== 'roomspace' && view !== 'host') {
         setView('lobby'); 
       }
     };
 
-    // 2. Match Found Listener
     const handleMatchFound = (data) => {
       console.log("⚡ MATCH FOUND!", data);
       setRoomData(data); 
@@ -101,7 +106,6 @@ function App() {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setRoomCode(code);
     
-    // Updated to send full config (topic/file) for the new Join Page logic
     socket.emit("create_room", { 
         username, 
         roomCode: code, 
@@ -134,11 +138,11 @@ function App() {
             username={username} 
             setView={setView} 
             open1v1Setup={open1v1Setup}
-            questionsSolved={questionsSolved} 
+            questionsSolved={questionsSolved} // <--- PASSING SCORE
           />
         )}
 
-        {/* --- [NEW] JOIN ROOM PAGE --- */}
+        {/* --- JOIN ROOM PAGE --- */}
         {view === 'join' && (
           <JoinRoom 
             socket={socket} 
@@ -153,7 +157,7 @@ function App() {
         {view === 'history' && <History />}
         {view === 'analysis' && <AIAnalysis />}
 
-        {/* YOUR HOST PAGE */}
+        {/* HOST PAGE */}
         {view === 'host' && (
           <SquadHost 
             setView={setView} 
@@ -165,7 +169,7 @@ function App() {
           />
         )}
 
-        {/* YOUR ROOMSPACE PAGE */}
+        {/* ROOMSPACE PAGE */}
         {view === 'roomspace' && (
           <RoomSpace 
             roomCode={roomCode}
@@ -179,7 +183,7 @@ function App() {
 
         {/* LOBBY */}
         {view === 'lobby' && (
-           <div className="text-center animate-[fadeIn_0.5s]">
+            <div className="text-center animate-[fadeIn_0.5s]">
               <h2 className="text-9xl font-bold mb-8 text-white">{roomCode}</h2>
               <div className="flex justify-center gap-6 mb-12">
                  {roomPlayers.map((p, i) => (
@@ -187,11 +191,19 @@ function App() {
                  ))}
               </div>
               <p className="text-gray-400">Waiting for host to start...</p>
-           </div>
+            </div>
         )}
 
         {/* GAME */}
-        {view === 'game' && <GameArena socket={socket} roomData={roomData} username={username} setView={setView} />}
+        {view === 'game' && (
+          <GameArena 
+             socket={socket} 
+             roomData={roomData} 
+             username={username} 
+             setView={setView} 
+             onGameEnd={handleGameEnd} // <--- PASSING UPDATER
+          />
+        )}
 
       </div>
 

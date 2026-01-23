@@ -47,7 +47,7 @@ const AIAnalysis = () => {
               <input 
                 type="text" 
                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white mt-2 focus:border-purple-500 outline-none"
-                placeholder="e.g. Shreyas"
+                placeholder="e.g. arnadeep"
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
               />
             </div>
@@ -78,7 +78,7 @@ const AIAnalysis = () => {
               <input 
                 type="text" 
                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white mt-2 focus:border-yellow-500 outline-none"
-                placeholder="e.g. 9.18 SGPA in CSE"
+                placeholder="e.g. 9.9 SGPA in CSE"
                 onChange={(e) => setFormData({...formData, grades: e.target.value})}
               />
             </div>
