@@ -23,19 +23,35 @@ const roomInfo = {};
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // --- HELPER: ROBUST JSON EXTRACTOR ---
-// Uses Regex to find the JSON array/object even if AI adds extra text
+// FIXED: This function now actively removes the ```json wrapping causing your crash
 function extractJson(text) {
   try {
-    // 1. Try finding an array [ ... ]
-    const arrayMatch = text.match(/\[.*\]/s);
-    if (arrayMatch) return JSON.parse(arrayMatch[0]);
-    
-    // 2. Try finding an object { ... }
-    const objectMatch = text.match(/\{[\s\S]*\}/);
-    if (objectMatch) return JSON.parse(objectMatch[0]);
+    // 1. Remove Markdown code blocks (```json, ```) and whitespace
+    let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    // 3. Fallback: Parse whole text
-    return JSON.parse(text);
+    // 2. Locate the actual JSON object or array to ignore "Here is your JSON" text
+    const firstOpenBrace = cleanText.indexOf('{');
+    const firstOpenBracket = cleanText.indexOf('[');
+    
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Determine if it's an Object {...} or Array [...]
+    // If we find an object '{' before an array '[' (or no array), parse as object
+    if (firstOpenBrace !== -1 && (firstOpenBracket === -1 || firstOpenBrace < firstOpenBracket)) {
+         startIndex = firstOpenBrace;
+         endIndex = cleanText.lastIndexOf('}') + 1;
+    } else if (firstOpenBracket !== -1) {
+         startIndex = firstOpenBracket;
+         endIndex = cleanText.lastIndexOf(']') + 1;
+    }
+
+    // 3. Extract just the JSON part
+    if (startIndex !== -1 && endIndex !== -1) {
+        cleanText = cleanText.substring(startIndex, endIndex);
+    }
+
+    return JSON.parse(cleanText);
   } catch (e) {
     console.error("⚠️ JSON Extraction Failed. Raw Text:", text);
     return null; 
@@ -56,6 +72,7 @@ async function agentStemQuiz(topic, difficulty) {
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.5, 
+      max_tokens: 4000, // Added to ensure the AI finishes the JSON array
     });
 
     let text = completion.choices[0]?.message?.content || "";
@@ -77,7 +94,7 @@ async function agentStemQuiz(topic, difficulty) {
   }
 }
 
-// --- AGENT 2: CAREER MATCHING (DETAILED PROMPTS RESTORED) ---
+// --- AGENT 2: CAREER MATCHING ---
 async function agentCareerGuidance(profile) {
   console.log(`🚀 Career Agent analyzing profile for: ${profile.name}`);
 
@@ -93,10 +110,7 @@ async function agentCareerGuidance(profile) {
           You MUST mention:
           1. Specific tools (e.g., VS Code, Jupyter, Figma).
           2. Specific platforms (e.g., Coursera, GitHub, LeetCode).
-          3. A concrete project to build (e.g., "Build a Weather App", "Create a Chatbot").
-
-          Example of a GOOD step:
-          "Master Python Fundamentals. Start by installing VS Code and taking the 'Python for Everybody' course on Coursera. Once comfortable with loops, build a 'To-Do List CLI' project using the 'Click' library to practice logic."`
+          3. A concrete project to build (e.g., "Build a Weather App", "Create a Chatbot").`
         },
         {
           role: "user",
@@ -125,7 +139,8 @@ async function agentCareerGuidance(profile) {
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.3, 
+      temperature: 0.3,
+      max_tokens: 4000, // Added to prevent the Roadmap from being cut off
     });
 
     let text = completion.choices[0]?.message?.content || "";
@@ -136,7 +151,7 @@ async function agentCareerGuidance(profile) {
   } catch (error) {
     console.error("❌ Career Agent Error:", error.message);
     
-    // FULL FALLBACK DATA (Restored)
+    // FULL FALLBACK DATA (To keep app running if AI fails)
     return {
       recommended_careers: [
         { title: "AI Research Scientist", match_score: "98%", reason: "Strong theoretical grasp combined with coding skills." },
