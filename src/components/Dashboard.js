@@ -66,10 +66,16 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           <h1 className="text-7xl font-extrabold tracking-tight mt-2 text-white">{username}</h1>
           <p className="italic text-purple-300 mt-4 max-w-xl">“{quote}”</p>
           
-          {/* UPDATED RANK DISPLAY */}
-          <p className="text-gray-300 mt-6 font-bold">
-            Rank: <span className="text-purple-400 font-extrabold uppercase tracking-wider">{currentRank}</span>
-          </p>
+          {/* UPDATED RANK DISPLAY (Cleaned) */}
+          <div 
+            onClick={() => setView('rank')} 
+            className="mt-6 cursor-pointer group flex items-center gap-2"
+          >
+            <span className="text-gray-300 font-bold">Rank:</span>
+            <span className="text-purple-400 font-extrabold uppercase tracking-wider group-hover:text-purple-300 transition-colors">
+              {currentRank}
+            </span>
+          </div>
         </div>
 
         <button 
@@ -128,7 +134,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
 
         {/* 4. CAREER GUIDANCE */}
         <div 
-          onClick={() => setView('analysis')} 
+          onClick={() => setView('career')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 hover:scale-[1.02] transition cursor-pointer hover:border-blue-500/30 group relative overflow-hidden"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -145,7 +151,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
 
         {/* 5. HISTORY */}
         <div 
-          onClick={() => setView('grimoire')} 
+          onClick={() => setView('history')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 cursor-pointer transition-all duration-500 group hover:scale-[1.02] hover:border-yellow-600/50 hover:shadow-[0_0_40px_rgba(234,179,8,0.2)] relative overflow-hidden"
           style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}
         >

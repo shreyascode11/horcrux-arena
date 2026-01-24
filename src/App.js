@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 
 // CORE COMPONENTS
@@ -10,11 +10,16 @@ import DuelModal from "./components/DuelModal";
 import GameArena from "./components/GameArena";
 import Lobby from "./components/Lobby";
 
+// NEW PAGES
+import Grimoire from "./components/Grimoire";
+import AIAnalysis from "./components/AIAnalysis";
+import RankOverview from "./components/RankOverview"; // ✅ IMPORTED
+
 // UI / FEATURES
 import Sidebar from "./components/Sidebar";
 import JoinRoom from "./components/JoinRoom";
 
-// SOCKET
+// SOCKET CONNECTION
 const socket = io("http://localhost:3001", {
   transports: ["websocket"],
 });
@@ -29,10 +34,10 @@ function App() {
   const [avatarSeed, setAvatarSeed] = useState("felix");
 
   const [questionsSolved, setQuestionsSolved] = useState(
-    () => parseInt(localStorage.getItem("wizardScore")) || 69
+    () => parseInt(localStorage.getItem("wizardScore")) || 0
   );
 
-  // ROOM
+  // ROOM STATE
   const [roomCode, setRoomCode] = useState("");
   const [roomPlayers, setRoomPlayers] = useState([]);
   const [roomData, setRoomData] = useState(null);
@@ -45,6 +50,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [show1v1Modal, setShow1v1Modal] = useState(false);
 
+  // THEME MANAGEMENT
   const getTheme = () => {
     switch (view) {
       case "login": return "red";
@@ -53,6 +59,9 @@ function App() {
       case "join": return "purple";
       case "lobby": return "red";
       case "game": return "green";
+      case "career": return "blue";
+      case "history": return "yellow";
+      case "rank": return "yellow"; // Rank Theme
       default: return "red";
     }
   };
@@ -75,7 +84,6 @@ function App() {
       setView("game");
     });
 
-    // ✅ REQUIRED: handle kick
     socket.on("kicked", () => {
       alert("You were kicked by the host");
       setRoomCode("");
@@ -124,22 +132,31 @@ function App() {
     setQuestionsSolved((prev) => prev + score);
   };
 
+  const open1v1Setup = () => {
+    setShow1v1Modal(true);
+  };
+
   // ================= RENDER =================
   return (
     <div className="relative w-full min-h-screen bg-black text-white overflow-hidden">
       <Background theme={getTheme()} />
 
+      {/* ✅ FIX 1: Sidebar ONLY on Dashboard ('menu') */}
+      {/* ✅ FIX 3 & 4: Passed setUsername and view props */}
       {view === "menu" && (
         <Sidebar
           username={username}
+          setUsername={setUsername} 
           avatarSeed={avatarSeed}
           setAvatarSeed={setAvatarSeed}
           setView={setView}
+          view={view}
           onLogout={handleLogout}
         />
       )}
 
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
+        
         {view === "login" && (
           <Login
             username={username}
@@ -153,6 +170,7 @@ function App() {
             username={username}
             setView={setView}
             questionsSolved={questionsSolved}
+            open1v1Setup={open1v1Setup}
           />
         )}
 
@@ -196,6 +214,30 @@ function App() {
             onGameEnd={handleGameEnd}
           />
         )}
+
+        {/* --- PAGES --- */}
+        
+        {view === "career" && (
+          <AIAnalysis 
+            setView={setView} 
+          />
+        )}
+
+        {view === "history" && (
+          <Grimoire 
+            setView={setView} 
+            username={username} 
+          />
+        )}
+
+        {/* ✅ FIX 2: Added RankOverview Rendering */}
+        {view === "rank" && (
+           <RankOverview
+            setView={setView}
+            questionsSolved={questionsSolved}
+          />
+        )}
+
       </div>
 
       {show1v1Modal && (

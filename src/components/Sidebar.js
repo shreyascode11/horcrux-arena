@@ -1,154 +1,137 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { IconLogout } from './Icons';
 
-// --- ICONS ---
-const IconDashboard = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
-const IconBriefcase = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>;
-// NEW ICON FOR RANK
-const IconTrophy = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M12 15.4V22"></path><path d="M12 6a4 4 0 0 0-4 4v2a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-2a4 4 0 0 0-4-4Z"></path></svg>;
-const IconSettings = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
-const IconLogout = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
-const IconEdit = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
-const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
-const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>;
-
-const Sidebar = ({ username, setUsername, setView, onLogout, avatarSeed, setAvatarSeed }) => {
+const Sidebar = ({ username, setUsername, avatarSeed, setAvatarSeed, setView, view, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [tempName, setTempName] = useState(username);
+  const [editName, setEditName] = useState(username);
+  const inputRef = useRef(null);
 
-  const handleEditClick = () => {
-    setTempName(username);
-    setIsEditing(true);
-  };
+  // Focus input automatically when editing starts
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
 
-  const handleSaveClick = () => {
-    if (tempName.trim()) {
-      setUsername(tempName); 
+  const handleSaveName = () => {
+    if (editName.trim()) {
+      setUsername(editName);
+    } else {
+      setEditName(username); // Revert if empty
     }
     setIsEditing(false);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleSaveClick();
+    if (e.key === 'Enter') handleSaveName();
+    if (e.key === 'Escape') {
+      setEditName(username);
+      setIsEditing(false);
+    }
   };
 
-  const shuffleAvatar = (e) => {
-    e.stopPropagation(); 
-    const randomSeed = Math.random().toString(36).substring(7);
-    setAvatarSeed(randomSeed);
+  // Helper for active button styles
+  const getButtonClass = (targetView, colorClass) => {
+    const isActive = view === targetView;
+    const baseClass = "flex items-center gap-4 p-4 rounded-xl transition-all duration-300 relative group overflow-hidden whitespace-nowrap";
+    
+    if (isActive) {
+      return `${baseClass} ${colorClass} text-white shadow-[0_0_20px_rgba(255,255,255,0.2)]`;
+    }
+    return `${baseClass} text-gray-400 hover:text-white hover:bg-white/10`;
   };
+
+  const fontStyle = { fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" };
 
   return (
-    // DARK LIQUID GLASS EFFECT
+    // --- MAIN CONTAINER WITH HELVETICA FONT ---
     <div 
-      className={`fixed left-0 top-0 h-screen bg-black/20 backdrop-blur-xl border-r border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] z-50 flex flex-col justify-between p-5 transition-all duration-300 ease-in-out group overflow-hidden ${isEditing ? 'w-80' : 'w-24 hover:w-80'}`}
+      className="fixed left-0 top-0 h-full w-24 hover:w-80 bg-black/40 backdrop-blur-2xl border-r border-white/10 flex flex-col py-8 z-50 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] group overflow-hidden shadow-2xl"
+      style={fontStyle}
     >
       
-      {/* --- TOP SECTION --- */}
-      <div className="flex flex-col w-full">
-        
-        {/* LOGO & AVATAR ROW */}
-        <div className="flex items-center gap-4 mb-12 pl-1">
-          
-          {/* AVATAR */}
-          <div 
-            onClick={shuffleAvatar}
-            className="relative flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5 cursor-pointer hover:scale-105 transition-transform shadow-lg"
-            title="Click to shuffle avatar"
-          >
-             <img 
-               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed || username}`} 
+      {/* 1. AVATAR & NAME SECTION */}
+      <div className="mb-10 flex flex-col items-center w-full px-4 transition-all duration-500">
+         
+         {/* Avatar (Changed to 'Avataaars' style) */}
+         <div 
+           className="relative w-12 h-12 group-hover:w-20 group-hover:h-20 transition-all duration-500 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 p-[2px] cursor-pointer shadow-[0_0_30px_rgba(168,85,247,0.3)]"
+           onClick={() => setAvatarSeed(Math.random().toString())}
+           title="Click to change Avatar"
+         >
+            <img 
+               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`} 
                alt="avatar" 
-               className="w-full h-full rounded-full bg-black/50"
-             />
-             <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <IconRefresh />
-             </div>
-          </div>
-
-          {/* APP TITLE */}
-          <span className="text-xl font-bold text-white tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap overflow-hidden delay-75 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-            HORCRUX
-          </span>
-        </div>
-
-        {/* PROFILE SECTION */}
-        <div className="mb-10 pl-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 whitespace-nowrap overflow-hidden">
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Welcome,</p>
-            
-            <div className="flex items-center gap-2 h-8">
-              {isEditing ? (
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text" 
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                    className="bg-white/10 text-white text-sm font-bold p-1 rounded w-32 outline-none border border-purple-500 backdrop-blur-md"
-                  />
-                  <button onClick={handleSaveClick} className="text-green-400 hover:text-green-300">
-                    <IconCheck />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 group/edit cursor-pointer" onClick={handleEditClick}>
-                  <h3 className="text-white font-bold text-lg truncate max-w-[140px] drop-shadow-md">{username}</h3>
-                  <button className="text-gray-500 hover:text-purple-400 opacity-0 group-hover/edit:opacity-100 transition-opacity">
-                    <IconEdit />
-                  </button>
-                </div>
-              )}
+               className="w-full h-full rounded-full bg-black object-cover"
+            />
+            {/* Edit Icon Overlay */}
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+               <span className="text-[10px] text-white font-bold">CHANGE</span>
             </div>
-        </div>
-
-        {/* --- NAVIGATION MENU --- */}
-        <nav className="space-y-4 w-full">
-          
-          {/* Dashboard */}
-          <button 
-            onClick={() => setView('menu')}
-            className="w-full flex items-center gap-6 px-2 py-3 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-          >
-            <div className="flex-shrink-0 drop-shadow-lg"><IconDashboard /></div>
-            <span className="text-sm font-bold tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap delay-75">Dashboard</span>
-          </button>
-
-          {/* Rank Overview (NEW) */}
-          <button 
-            onClick={() => setView('rank')}
-            className="w-full flex items-center gap-6 px-2 py-3 text-gray-300 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-xl transition-all"
-          >
-            <div className="flex-shrink-0 drop-shadow-lg"><IconTrophy /></div>
-            <span className="text-sm font-bold tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap delay-75">Rank Overview</span>
-          </button>
-
-          {/* Career Guidance */}
-          <button 
-            onClick={() => setView('analysis')}
-            className="w-full flex items-center gap-6 px-2 py-3 text-gray-300 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all"
-          >
-            <div className="flex-shrink-0 drop-shadow-lg"><IconBriefcase /></div>
-            <span className="text-sm font-bold tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap delay-75">Career Guidance</span>
-          </button>
-
-        </nav>
+         </div>
+         
+         {/* Name Editor */}
+         <div className="h-0 opacity-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-500 delay-100 flex flex-col items-center mt-4 w-full">
+            {isEditing ? (
+              <div className="relative w-full">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={handleSaveName}
+                  onKeyDown={handleKeyDown}
+                  className="w-full bg-white/10 border border-purple-500/50 rounded-lg py-2 px-3 text-center text-white font-bold outline-none focus:shadow-[0_0_15px_rgba(168,85,247,0.5)] transition-all"
+                />
+                <span className="text-[10px] text-gray-400 mt-1 block text-center">Press Enter to Save</span>
+              </div>
+            ) : (
+              <div 
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-2 cursor-pointer hover:bg-white/5 px-4 py-2 rounded-lg transition-colors border border-transparent hover:border-white/10"
+              >
+                <h3 className="text-xl font-bold text-white truncate max-w-[180px]">{username}</h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-gray-500">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                </svg>
+              </div>
+            )}
+            {/* Removed Adept Wizard Text */}
+         </div>
       </div>
 
-      {/* --- BOTTOM SECTION --- */}
-      <div className="space-y-2 pt-6 border-t border-white/10 w-full">
-        <button className="w-full flex items-center gap-6 px-2 py-3 text-gray-400 hover:text-white transition-colors">
-           <div className="flex-shrink-0"><IconSettings /></div>
-           <span className="text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap delay-75">Settings</span>
-        </button>
+      {/* 2. NAVIGATION BUTTONS (Removed History) */}
+      <div className="flex-1 flex flex-col gap-3 w-full px-3">
+         
+         {/* DASHBOARD */}
+         <button onClick={() => setView('menu')} className={getButtonClass('menu', 'bg-purple-600')}>
+            <div className="min-w-[24px]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg></div>
+            <span className="font-bold tracking-widest text-xs uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">Dashboard</span>
+         </button>
 
-        <button 
-          onClick={onLogout}
-          className="w-full flex items-center gap-6 px-2 py-3 text-red-400/80 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-        >
-          <div className="flex-shrink-0"><IconLogout /></div>
-          <span className="text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap delay-75">Logout</span>
-        </button>
+         {/* RANKINGS */}
+         <button onClick={() => setView('rank')} className={getButtonClass('rank', 'bg-yellow-500')}>
+            <div className="min-w-[24px]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0V5.625a1.125 1.125 0 00-1.125-1.125h-2.25a1.125 1.125 0 00-1.125 1.125v9.75" /></svg></div>
+            <span className="font-bold tracking-widest text-xs uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">Rankings</span>
+         </button>
+
+         {/* CAREER */}
+         <button onClick={() => setView('career')} className={getButtonClass('career', 'bg-blue-600')}>
+            <div className="min-w-[24px]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></div>
+            <span className="font-bold tracking-widest text-xs uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">Career Guidance</span>
+         </button>
+
       </div>
+
+      {/* LOGOUT */}
+      <button 
+        onClick={onLogout} 
+        className="mx-3 mb-4 p-4 rounded-xl text-red-500 hover:bg-red-500/20 hover:text-white transition-all flex items-center gap-4 overflow-hidden whitespace-nowrap"
+        title="Logout"
+      >
+         <div className="min-w-[24px]"><IconLogout /></div>
+         <span className="font-bold tracking-widest text-xs uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300">Logout</span>
+      </button>
 
     </div>
   );
