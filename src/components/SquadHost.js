@@ -136,7 +136,7 @@ const SquadHost = ({
                       type="text" 
                       value={topic} 
                       onChange={(e) => setTopic(e.target.value)} 
-                      placeholder="e.g. Advanced Potion Making" 
+                      placeholder="e.g. Sciebce, History, Coding" 
                       className="w-full bg-transparent border-b border-white/10 py-4 text-2xl text-white placeholder-gray-700 focus:outline-none focus:border-purple-500 transition-colors font-light tracking-wide text-center"
                     />
                     <div className="absolute right-0 top-4 text-purple-500/50 animate-pulse">✨</div>
