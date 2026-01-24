@@ -99,8 +99,6 @@ const Sidebar = ({ username, setUsername, setView, onLogout, avatarSeed, setAvat
                 </div>
               )}
             </div>
-            
-            <p className="text-[10px] text-purple-400 font-bold tracking-widest mt-1">ADEPT WIZARD</p>
         </div>
 
         {/* --- NAVIGATION MENU --- */}

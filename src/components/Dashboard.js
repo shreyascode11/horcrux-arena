@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 // Assuming Icons.js exists in the same folder
 import { IconSword, IconUsers, IconLogout, IconArrowRight, IconScroll } from './Icons';
+
+// Import from the correct filename 'rank-system'
+import { getRank } from './rank-system'; 
 
 // Fallback if Icons are missing to prevent crash
 const LocalIconScroll = () => (
@@ -21,26 +24,39 @@ const quotes = [
 const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => {
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
   
-  // --- REORDERED MONTHS (Jan at Top) with DYNAMIC PROGRESS LOGIC ---
-  // Using the logic where Jan reflects the live score.
-  // Assuming questionsSolved is the live score passed from App.js
-  
+  // --- RANK STATE ---
+  const [currentRank, setCurrentRank] = useState("Novice");
+
+  // --- EFFECT: Calculate Rank from History on Load ---
+  useEffect(() => {
+    // 1. Get History
+    const history = JSON.parse(localStorage.getItem('wizardBattleLog') || '[]');
+    
+    // 2. Calculate Total Correct Answers (Score)
+    let totalScore = 0;
+    history.forEach(battle => {
+      // FIX: We count 'myScore' (Correct Answers), NOT 'totalQuestions' (Attempts)
+      totalScore += (battle.myScore || 0);
+    });
+
+    // 3. Update Rank using your logic
+    const rank = getRank(totalScore);
+    setCurrentRank(rank);
+  }, []); 
+
   const monthlyProgress = [
-    { month: "Jan", solved: questionsSolved }, // <--- LIVE SCORE AT TOP
+    { month: "Jan", solved: questionsSolved }, 
     { month: "Feb", solved: 0 },
     { month: "Mar", solved: 0 },
     { month: "Apr", solved: 0 },
     { month: "May", solved: 0 }
   ];
 
-  const maxGoal = 20; // Visual Scale
-
-  // Use imported icons if available, else local fallback
+  const maxGoal = 20; 
   const ScrollIcon = IconScroll || LocalIconScroll;
   const ArrowIcon = IconArrowRight || LocalIconArrowRight;
 
   return (
-    // --- UPDATED CLASS: Added 'ml-24' to push content right of the sidebar ---
     <div className="w-full h-full animate-fade-in max-w-7xl ml-24">
 
       {/* HEADER */}
@@ -49,10 +65,13 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           <h2 className="text-3xl font-extrabold tracking-widest text-purple-300">WELCOME</h2>
           <h1 className="text-7xl font-extrabold tracking-tight mt-2 text-white">{username}</h1>
           <p className="italic text-purple-300 mt-4 max-w-xl">“{quote}”</p>
-          <p className="text-gray-300 mt-6 font-bold">Rank: <span className="text-purple-400 font-extrabold">Adept Wizard</span></p>
+          
+          {/* UPDATED RANK DISPLAY */}
+          <p className="text-gray-300 mt-6 font-bold">
+            Rank: <span className="text-purple-400 font-extrabold uppercase tracking-wider">{currentRank}</span>
+          </p>
         </div>
 
-        {/* --- ENTER CODE BUTTON --- */}
         <button 
           onClick={() => setView('join')} 
           className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white font-bold hover:scale-105 transition mt-6 md:mt-0 flex items-center gap-2 uppercase tracking-widest"
@@ -84,7 +103,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           </div>
         </div>
 
-        {/* 3. MONTHLY PROGRESS (REORDERED: JAN TOP) */}
+        {/* 3. MONTHLY PROGRESS */}
         <div className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 hover:scale-[1.02] transition">
           <h3 className="text-lg font-bold text-white mb-4">Monthly Progress</h3>
           <div className="space-y-3">
@@ -124,7 +143,7 @@ const Dashboard = ({ username, setView, open1v1Setup, questionsSolved = 0 }) => 
           </div>
         </div>
 
-        {/* 5. GRIMOIRE CARD (HISTORY) */}
+        {/* 5. HISTORY */}
         <div 
           onClick={() => setView('grimoire')} 
           className="col-span-12 lg:col-span-4 bg-[#0f0f0f] border border-white/5 rounded-[2rem] p-8 cursor-pointer transition-all duration-500 group hover:scale-[1.02] hover:border-yellow-600/50 hover:shadow-[0_0_40px_rgba(234,179,8,0.2)] relative overflow-hidden"
