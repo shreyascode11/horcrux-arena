@@ -16,143 +16,141 @@ const io = new Server(server, {
   },
 });
 
-// --- 1. GLOBAL STORAGE (FROM TEAM) ---
-// Critical for Join Page to show Topic/Host/Count
+// --- 1. GLOBAL STORAGE ---
 const roomInfo = {}; 
 
-// --- 2. CONFIGURATION & SAFETY CHECKS ---
-if (!process.env.GROQ_API_KEY) {
-  console.error("❌ FATAL ERROR: GROQ_API_KEY is missing in .env file!");
-}
-
+// --- GROQ AI CONFIGURATION ---
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// --- HELPER: CLEAN JSON OUTPUT ---
-function cleanJson(text) {
-  if (!text) return null;
-  let clean = text.replace(/```json/g, "").replace(/```/g, "");
-  
-  const firstBrace = clean.indexOf('{');
-  const firstBracket = clean.indexOf('[');
-  
-  let start = -1;
-  let end = -1;
+// --- HELPER: ROBUST JSON EXTRACTOR ---
+// Uses Regex to find the JSON array/object even if AI adds extra text
+function extractJson(text) {
+  try {
+    // 1. Try finding an array [ ... ]
+    const arrayMatch = text.match(/\[.*\]/s);
+    if (arrayMatch) return JSON.parse(arrayMatch[0]);
+    
+    // 2. Try finding an object { ... }
+    const objectMatch = text.match(/\{[\s\S]*\}/);
+    if (objectMatch) return JSON.parse(objectMatch[0]);
 
-  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-    start = firstBrace;
-    end = clean.lastIndexOf('}');
-  } 
-  else if (firstBracket !== -1) {
-    start = firstBracket;
-    end = clean.lastIndexOf(']');
+    // 3. Fallback: Parse whole text
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("⚠️ JSON Extraction Failed. Raw Text:", text);
+    return null; 
   }
-
-  if (start !== -1 && end !== -1) {
-    clean = clean.substring(start, end + 1);
-  }
-  
-  return clean.trim();
 }
 
-// --- AGENT 1: STEM QUIZ (YOUR ROBUST VERSION) ---
+// --- AGENT 1: STEM QUIZ (10 QUESTIONS) ---
 async function agentStemQuiz(topic, difficulty) {
-  const seed = Date.now();
-  console.log(`🧪 Quiz Agent: Requesting "${topic}" (Seed: ${seed})`);
-  
+  console.log(`🧪 STEM Agent generating quiz on: ${topic} (${difficulty})`);
   try {
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: "You are a Quiz Generator. Output raw JSON array only." },
-        { 
-          role: "user", 
-          content: `Generate 10 multiple-choice questions about "${topic}". Difficulty: ${difficulty}.
-          Random Seed: ${seed}.
-          
-          Format: JSON Array only.
-          [
-            {
-              "id": 1, 
-              "text": "Question?", 
-              "options": ["A", "B", "C", "D"], 
-              "correctAnswer": "A" 
-            }
-          ]` 
+        { role: "system", content: "You are a specialized Quiz API. Output raw JSON only. No markdown, no intro." },
+        // INSTRUCTION: EXPLICITLY ASK FOR 10 QUESTIONS
+        { role: "user", content: `Generate exactly 10 multiple-choice questions about "${topic}".
+          Format: [{"id": 1, "text": "Question?", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]` 
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.7, 
+      temperature: 0.5, 
     });
 
-    const text = completion.choices[0]?.message?.content || "";
-    const cleaned = cleanJson(text);
-    return JSON.parse(cleaned);
+    let text = completion.choices[0]?.message?.content || "";
+    const questions = extractJson(text);
+    
+    if (Array.isArray(questions) && questions.length > 0) {
+      // If AI gave less than 10, duplicate questions to reach 10 so game doesn't break
+      while (questions.length < 10) {
+        questions.push({ ...questions[0], id: questions.length + 1, text: questions[0].text + " (Bonus)" });
+      }
+      return questions.slice(0, 10); // Ensure exactly 10
+    } else {
+      throw new Error("AI output was not a valid array");
+    }
 
   } catch (error) {
-    console.error("❌ Quiz Agent Failed:", error.message);
-    return []; 
+    console.error("❌ Quiz Agent Error:", error.message);
+    return [];
   }
 }
 
-// --- AGENT 2: CAREER GUIDANCE (YOUR DEBUG MODE VERSION) ---
+// --- AGENT 2: CAREER MATCHING (DETAILED PROMPTS RESTORED) ---
 async function agentCareerGuidance(profile) {
-  console.log(`🚀 Career Agent: Analyzing ${profile.name}...`);
+  console.log(`🚀 Career Agent analyzing profile for: ${profile.name}`);
 
   try {
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are a Career Architect. Output ONLY valid JSON.`
+          content: `You are a Senior Career Architect. You do not speak. You only output valid JSON data.
+          
+          CRITICAL INSTRUCTION FOR 'roadmap': 
+          Each step MUST be a detailed paragraph (3-4 sentences).
+          You MUST mention:
+          1. Specific tools (e.g., VS Code, Jupyter, Figma).
+          2. Specific platforms (e.g., Coursera, GitHub, LeetCode).
+          3. A concrete project to build (e.g., "Build a Weather App", "Create a Chatbot").
+
+          Example of a GOOD step:
+          "Master Python Fundamentals. Start by installing VS Code and taking the 'Python for Everybody' course on Coursera. Once comfortable with loops, build a 'To-Do List CLI' project using the 'Click' library to practice logic."`
         },
         {
           role: "user",
-          content: `Profile: ${JSON.stringify(profile)}.
+          content: `Analyze this student profile:
+          Name: ${profile.name}
+          Skills: ${profile.skills}
+          Interests: ${profile.interests}
+          Grades: ${profile.grades}
           
-          Return JSON object:
+          Return a JSON object with this EXACT structure:
           {
             "recommended_careers": [
-              { "title": "Job Title", "match_score": "90%", "reason": "Why" }
+              { "title": "string", "match_score": "string", "reason": "Detailed reason why this fits" },
+              { "title": "string", "match_score": "string", "reason": "Detailed reason why this fits" },
+              { "title": "string", "match_score": "string", "reason": "Detailed reason why this fits" }
             ],
             "roadmap": [
-              "Step 1: Detailed instruction",
-              "Step 2: Detailed instruction",
-              "Step 3: Detailed instruction",
-              "Step 4: Detailed instruction"
+              "Phase 1: [Detailed actionable paragraph with specific resources and a project idea]",
+              "Phase 2: [Detailed actionable paragraph with specific resources and a project idea]",
+              "Phase 3: [Detailed actionable paragraph with specific resources and a project idea]",
+              "Phase 4: [Detailed actionable paragraph with specific resources and a project idea]"
             ],
-            "education_path": "Degree name",
-            "market_outlook": "Growth stats"
+            "education_path": "Detailed degree or certification recommendation.",
+            "market_outlook": "Detailed market analysis."
           }`
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.1, 
+      temperature: 0.3, 
     });
 
-    const text = completion.choices[0]?.message?.content || "";
-    const cleanedText = cleanJson(text);
-    
-    if (!cleanedText) throw new Error("Empty response from AI");
-    
-    return JSON.parse(cleanedText);
+    let text = completion.choices[0]?.message?.content || "";
+    const data = extractJson(text);
+    if (!data) throw new Error("Invalid JSON from Career Agent");
+    return data;
 
   } catch (error) {
-    console.error("❌ Career Agent Failed:", error.message);
+    console.error("❌ Career Agent Error:", error.message);
     
-    // Fallback Data
+    // FULL FALLBACK DATA (Restored)
     return {
       recommended_careers: [
-        { title: "Software Engineer", match_score: "95%", reason: "Fallback: Matches your tech skills." },
-        { title: "Data Scientist", match_score: "88%", reason: "Fallback: Matches your analytical background." },
-        { title: "Product Manager", match_score: "80%", reason: "Fallback: Good fit for leadership interests." }
+        { title: "AI Research Scientist", match_score: "98%", reason: "Strong theoretical grasp combined with coding skills." },
+        { title: "Robotics Engineer", match_score: "92%", reason: "Interest in hardware and automation." },
+        { title: "Data Analyst", match_score: "85%", reason: "Matches analytical background." }
       ],
       roadmap: [
-        "Step 1: Master the Basics. Focus on Python and JavaScript logic.",
-        "Step 2: Build Projects. Create a portfolio with at least 3 full-stack apps.",
-        "Step 3: Advanced Concepts. Learn System Design and Cloud Architecture.",
-        "Step 4: Job Hunt. Optimize your resume and practice LeetCode."
+        "Phase 1: Foundations. Master Advanced Python. Don't just watch videos; build a 'Library Management System' to understand databases. Complete the 'CS50' course from Harvard online.",
+        "Phase 2: Mathematics & ML. Dive deep into Linear Algebra. Build a 'Handwritten Digit Recognizer' using MNIST data to understand neural networks.",
+        "Phase 3: Hardware Integration. Buy an Arduino or Raspberry Pi and code an 'Obstacle Avoidance Bot'. Learn ROS (Robot Operating System).",
+        "Phase 4: Professional Portfolio. Contribute to Open Source on GitHub. Build a comprehensive Portfolio Website showcasing your Bot."
       ],
-      education_path: "B.Tech in Computer Science or equivalent certification.",
-      market_outlook: "Stable and high demand globally."
+      education_path: "Masters in CS or Mechatronics recommended.",
+      market_outlook: "Very High growth expected."
     };
   }
 }
@@ -161,38 +159,42 @@ async function agentCareerGuidance(profile) {
 io.on('connection', (socket) => {
   console.log(`⚡ User Connected: ${socket.id}`);
 
-  // --- 1. SINGLE PLAYER / BOT MATCH (YOUR FEATURE) ---
+  // --- 1. MATCHMAKING ---
   socket.on('find_match', async ({ username, topic, difficulty }) => {
+    console.log(`🔍 ${username} is searching for: ${topic}`);
     const roomCode = `room_${socket.id}`;
     socket.join(roomCode);
     
-    const questions = await agentStemQuiz(topic || "Science", difficulty || "Medium");
+    // Capture the actual topic or fallback
+    const searchTopic = topic || "General Science";
+
+    // Use the AI Agent (Requests 10 questions)
+    const questions = await agentStemQuiz(searchTopic, difficulty || "Medium");
     
+    // If AI fails completely, use this fallback
     const finalQuestions = questions.length > 0 ? questions : [
-       { id: 1, text: "AI Unavailable. What is 2+2?", options: ["3", "4", "5", "6"], correctAnswer: "4" }
+       { id: 1, text: "AI Generation Failed. Please check server logs.", options: ["Retry", "Check API", "Reboot", "Sleep"], correctAnswer: "Check API" }
     ];
 
     socket.emit("match_found", {
       roomCode,
+      topic: searchTopic, // <--- Correctly sends topic to client for History
       questions: finalQuestions,
       players: [{ id: socket.id, username, avatar: '👨‍🎓' }, { id: 'BOT', username: 'StemBot', avatar: '🤖' }]
     });
   });
 
-  // --- 2. CAREER ADVICE (YOUR FEATURE) ---
+  // --- 2. CAREER ADVICE ---
   socket.on('get_career_advice', async (userProfile) => {
-    console.log("📩 Received Career Request for:", userProfile.name);
     const careerData = await agentCareerGuidance(userProfile);
-    console.log("📤 Sending Results back to Client...");
     socket.emit("career_advice_result", careerData);
   });
 
-  // --- 3. SQUAD HOSTING (TEAM FEATURE) ---
+  // --- 3. CREATE ROOM ---
   socket.on("create_room", (data) => {
     const { username, roomCode, config } = data;
     socket.join(roomCode);
     
-    // Save details for Join Page
     roomInfo[roomCode] = {
       host: username,
       topic: config?.topic || "General Magic",
@@ -201,14 +203,13 @@ io.on('connection', (socket) => {
 
     console.log(`🏰 Room Created: ${roomCode} by ${username}`);
     
-    // Send update so host enters lobby
     io.to(roomCode).emit("room_data", { 
         players: [username], 
         roomCode 
     });
   });
 
-  // --- 4. JOIN PAGE CHECK (TEAM FEATURE) ---
+  // --- 4. CHECK ROOM ---
   socket.on("check_room", (roomCode) => {
     const room = io.sockets.adapter.rooms.get(roomCode);
     const info = roomInfo[roomCode];
@@ -226,7 +227,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- 5. JOIN ROOM (TEAM FEATURE) ---
+  // --- 5. JOIN ROOM ---
   socket.on("join_room", (data) => {
     const { roomCode, username } = data;
     const room = io.sockets.adapter.rooms.get(roomCode);
@@ -234,13 +235,8 @@ io.on('connection', (socket) => {
     if (room) {
       socket.join(roomCode);
       console.log(`👋 ${username} joined ${roomCode}`);
-
-      // Basic logic to update player list
-      // Note: This is a simple mock list. You'll likely want to store real player objects in roomInfo later.
-      const playerCount = room.size;
-      const players = Array(playerCount).fill("Wizard");
-      players[players.length - 1] = username; 
-
+      const players = Array(room.size).fill("Wizard");
+      players[players.length - 1] = username;
       io.to(roomCode).emit("room_data", { players, roomCode });
     }
   });

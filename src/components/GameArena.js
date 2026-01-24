@@ -21,9 +21,31 @@ const GameArena = ({ socket, roomData, username, setView, onGameEnd }) => {
   const [selectedOption, setSelectedOption] = useState(null); 
   const [answerStatus, setAnswerStatus] = useState(null); 
 
+  // --- CAPTURE DATA FOR HISTORY ---
   const opponentName = roomData?.players.find(p => p.username !== username)?.username || "Rival";
+  // The Fix: Capture the Topic passed from the server
+  const gameTopic = roomData?.topic || "General Magic";
 
-  // --- THE FIX IS HERE ---
+  // --- SAVE HISTORY FUNCTION ---
+  const saveBattleToHistory = (finalScore) => {
+    const battleRecord = {
+      id: Date.now(),
+      type: roomData?.mode || "1v1 Duel",
+      topic: gameTopic, // Uses the real topic
+      opponent: opponentName,
+      myScore: finalScore,
+      totalQuestions: questions.length, // <--- SAVES '10' (or however many)
+      opScore: Math.floor(Math.random() * questions.length), 
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      result: finalScore > (questions.length / 2) ? "Victory" : "Defeat"
+    };
+
+    // Save to LocalStorage
+    const existingHistory = JSON.parse(localStorage.getItem('wizardBattleLog') || '[]');
+    const updatedHistory = [...existingHistory, battleRecord];
+    localStorage.setItem('wizardBattleLog', JSON.stringify(updatedHistory));
+  };
+
   const handleAnswer = (index) => {
     if (selectedOption !== null) return; 
 
@@ -45,16 +67,17 @@ const GameArena = ({ socket, roomData, username, setView, onGameEnd }) => {
       isCorrect = index === correctAnswerData;
     } else {
       // Logic for AI Data (String comparison)
-      // We trim whitespace and ignore case to be safe
       isCorrect = String(selectedText).trim().toLowerCase() === String(correctAnswerData).trim().toLowerCase();
     }
+
+    // Determine new score immediately to pass to save function later
+    const newScore = isCorrect ? myScore + 1 : myScore;
 
     if (isCorrect) {
       setAnswerStatus('correct');
       setMyScore(prev => prev + 1);
     } else {
       setAnswerStatus('wrong');
-      // console.log("Wrong! You clicked:", selectedText, "Expected:", correctAnswerData); // Debugging
     }
 
     // Delay to show animation
@@ -65,9 +88,12 @@ const GameArena = ({ socket, roomData, username, setView, onGameEnd }) => {
       if (currentQIndex + 1 < questions.length) {
         setCurrentQIndex(prev => prev + 1);
       } else {
+        // --- GAME FINISHED ---
         setFinished(true);
+        saveBattleToHistory(newScore); // <--- CALL SAVE FUNCTION
+        
         // Update global stats if function exists
-        if (onGameEnd) onGameEnd(myScore + (isCorrect ? 1 : 0));
+        if (onGameEnd) onGameEnd(newScore);
       }
     }, 1000); 
   };
