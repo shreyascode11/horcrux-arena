@@ -1,5 +1,3 @@
-// File: src/components/rank-system.js
-
 export const ranks = [
   { name: "Novice", min: 0 },
   { name: "Seeker", min: 20 },
@@ -11,8 +9,28 @@ export const ranks = [
   { name: "Trivia Saga", min: 1000 },
 ];
 
-export const getRank = (questionsSolved) => {
+export const getRank = (points = 0) => {
   return [...ranks]
     .reverse()
-    .find((rank) => questionsSolved >= rank.min)?.name || ranks[0].name;
+    .find((rank) => points >= rank.min)?.name || ranks[0].name;
+};
+
+/**
+ * Battle reward calculator
+ */
+export const calculateBattleRewards = ({
+  correctAnswers = 0,
+  totalQuestions = 0,
+}) => {
+  const accuracy = totalQuestions
+    ? correctAnswers / totalQuestions
+    : 0;
+
+  const baseXP = correctAnswers * 10;
+  const accuracyBonus = Math.floor(accuracy * 50);
+
+  return {
+    xp: baseXP + accuracyBonus,
+    correctAnswers,
+  };
 };

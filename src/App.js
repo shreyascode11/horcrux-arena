@@ -1,254 +1,212 @@
-import React, { useState, useEffect, useRef } from 'react';
-import io from 'socket.io-client';
+import React, { useState, useEffect, useRef } from "react";
+import io from "socket.io-client";
 
-// --- EXISTING IMPORTS ---
-import Background from './components/background';
-import Login from './components/Login'; 
-import Dashboard from './components/Dashboard'; 
-import SquadHost from './components/SquadHost'; 
-import DuelModal from './components/DuelModal'; 
-import RoomSpace from './components/RoomSpace'; 
+// CORE COMPONENTS
+import Background from "./components/background";
+import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import SquadHost from "./components/SquadHost";
+import DuelModal from "./components/DuelModal";
+import GameArena from "./components/GameArena";
+import Lobby from "./components/Lobby";
 
-// HIS FEATURES
+// UI / FEATURES
 import Sidebar from "./components/Sidebar";
-import RankOverview from "./components/RankOverview";
-import History from "./components/History";
-import AIAnalysis from "./components/AIAnalysis";
-import GameArena from './components/GameArena';
-import Grimoire from './components/Grimoire'; 
-import JoinRoom from './components/JoinRoom'; 
+import JoinRoom from "./components/JoinRoom";
 
-// --- CONNECT TO SERVER ---
-const socket = io.connect("http://localhost:3001");
+// SOCKET
+const socket = io("http://localhost:3001", {
+  transports: ["websocket"],
+});
 
 function App() {
-  // --- GLOBAL STATE ---
-  const [view, setView] = useState('login'); 
-  
-  // 1. Load Name from Storage (Persistence)
-  const [username, setUsername] = useState(() => {
-    return localStorage.getItem('wizardName') || '';
-  });
+  const [view, setView] = useState("login");
 
-  // 2. Avatar State (From Team Update)
-  const [avatarSeed, setAvatarSeed] = useState('felix'); 
-  
-  // 3. Load Score from Storage (Fixes Reset Bug)
-  const [questionsSolved, setQuestionsSolved] = useState(() => {
-    return parseInt(localStorage.getItem('wizardScore')) || 50; 
-  });
+  const [username, setUsername] = useState(
+    () => localStorage.getItem("wizardName") || ""
+  );
 
-  // GAME & ROOM STATE
-  const [roomData, setRoomData] = useState(null);
-  const [difficulty, setDifficulty] = useState('Moderate');
-  const [inputType, setInputType] = useState('topic');
-  const [topic, setTopic] = useState('');
-  const [roomCode, setRoomCode] = useState('');
+  const [avatarSeed, setAvatarSeed] = useState("felix");
+
+  const [questionsSolved, setQuestionsSolved] = useState(
+    () => parseInt(localStorage.getItem("wizardScore")) || 69
+  );
+
+  // ROOM
+  const [roomCode, setRoomCode] = useState("");
   const [roomPlayers, setRoomPlayers] = useState([]);
-  
-  // FILE & MODALS
+  const [roomData, setRoomData] = useState(null);
+
+  // HOST CONFIG
+  const [difficulty, setDifficulty] = useState("Moderate");
+  const [inputType, setInputType] = useState("topic");
+  const [topic, setTopic] = useState("");
+
   const [selectedFile, setSelectedFile] = useState(null);
-  const fileInputRef = useRef(null);
   const [show1v1Modal, setShow1v1Modal] = useState(false);
 
-  // --- THEME LOGIC ---
   const getTheme = () => {
-    switch(view) {
-      case 'login': return 'red';
-      case 'menu':  return 'blue';
-      case 'host':  return 'purple';
-      case 'join':  return 'purple';
-      case 'lobby': return 'green';
-      case 'game':  return 'green';
-      case 'grimoire': return 'purple';
-      default:      return 'red';
+    switch (view) {
+      case "login": return "red";
+      case "menu": return "blue";
+      case "host":
+      case "join": return "purple";
+      case "lobby": return "red";
+      case "game": return "green";
+      default: return "red";
     }
   };
 
-  // --- SAVE DATA AUTOMATICALLY ---
-  // This ensures your Monthly Progress survives a refresh
   useEffect(() => {
-    localStorage.setItem('wizardName', username);
-    localStorage.setItem('wizardScore', questionsSolved);
+    localStorage.setItem("wizardName", username);
+    localStorage.setItem("wizardScore", questionsSolved);
   }, [username, questionsSolved]);
 
-  // --- GAME END HANDLER ---
-  const handleGameEnd = (scoreFromGame) => {
-    console.log("🏆 Game Finished! Adding score:", scoreFromGame);
-    
-    // 1. Update Score (Only Once!)
-    setQuestionsSolved(prev => prev + scoreFromGame);
-
-    // 2. Save to Grimoire
-    const newBattle = {
-      id: Date.now(),
-      type: "1v1",
-      topic: topic || "General Magic",
-      opponent: "StemBot",
-      myScore: scoreFromGame,
-      opScore: Math.floor(Math.random() * 8), // Fake opponent score
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      result: scoreFromGame > 5 ? "Victory" : "Defeat"
-    };
-
-    const currentHistory = JSON.parse(localStorage.getItem('wizardBattleLog') || "[]");
-    const updatedHistory = [newBattle, ...currentHistory];
-    localStorage.setItem('wizardBattleLog', JSON.stringify(updatedHistory));
-  };
-
+  // ================= SOCKET LISTENERS =================
   useEffect(() => {
-    const handleRoomData = (data) => {
+    socket.on("room_data", (data) => {
+      setRoomCode(data.roomCode);
       setRoomPlayers(data.players);
-      if (view !== 'roomspace' && view !== 'host') {
-        setView('lobby'); 
-      }
-    };
+      setView("lobby");
+    });
 
-    const handleMatchFound = (data) => {
-      console.log("⚡ MATCH FOUND!", data);
-      setRoomData(data); 
-      setView('game');   
-    };
+    socket.on("match_found", (data) => {
+      setRoomData(data);
+      setView("game");
+    });
 
-    socket.on("room_data", handleRoomData);
-    socket.on("match_found", handleMatchFound);
+    // ✅ REQUIRED: handle kick
+    socket.on("kicked", () => {
+      alert("You were kicked by the host");
+      setRoomCode("");
+      setRoomPlayers([]);
+      setRoomData(null);
+      setView("menu");
+    });
 
     return () => {
-      socket.off("room_data", handleRoomData);
-      socket.off("match_found", handleMatchFound);
+      socket.off("room_data");
+      socket.off("match_found");
+      socket.off("kicked");
     };
-  }, [view]); 
+  }, []);
 
-  const handleLogin = () => { 
+  // ================= ACTIONS =================
+  const handleLogin = () => {
     if (username.trim()) {
-        // Set the avatar seed based on username for consistency
-        setAvatarSeed(username);
-        setView('menu'); 
+      setAvatarSeed(username);
+      setView("menu");
     }
   };
-  
+
   const handleLogout = () => {
-    setUsername('');
-    setRoomData(null);
+    setUsername("");
+    setRoomCode("");
     setRoomPlayers([]);
-    setView('login');
+    setRoomData(null);
+    setView("login");
   };
 
-  const open1v1Setup = () => { setShow1v1Modal(true); };
-  
   const createRoom = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setRoomCode(code);
-    
-    socket.emit("create_room", { 
-        username, 
-        roomCode: code, 
-        config: { topic, difficulty, file: selectedFile?.name } 
+
+    socket.emit("create_room", {
+      username,
+      roomCode: code,
+      config: { topic, difficulty, file: selectedFile?.name },
     });
-    setView('roomspace'); 
+
+    setView("lobby");
   };
 
-  const handleJoinLobby = () => setView('lobby');
-  const handleFileClick = () => fileInputRef.current.click();
-  const handleFileChange = (e) => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); };
+  const handleGameEnd = (score) => {
+    setQuestionsSolved((prev) => prev + score);
+  };
 
+  // ================= RENDER =================
   return (
-    <div className="relative w-full min-h-screen overflow-hidden text-white bg-black" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      
+    <div className="relative w-full min-h-screen bg-black text-white overflow-hidden">
       <Background theme={getTheme()} />
 
-      {/* --- SIDEBAR: ONLY SHOW IN DASHBOARD ('menu') --- */}
-      {view === 'menu' && (
-        <Sidebar 
-          username={username} 
-          setUsername={setUsername} 
-          avatarSeed={avatarSeed}   
-          setAvatarSeed={setAvatarSeed} 
-          setView={setView} 
-          onLogout={handleLogout} 
+      {view === "menu" && (
+        <Sidebar
+          username={username}
+          avatarSeed={avatarSeed}
+          setAvatarSeed={setAvatarSeed}
+          setView={setView}
+          onLogout={handleLogout}
         />
       )}
 
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
-        
-        {view === 'login' && (
-          <Login username={username} setUsername={setUsername} handleLogin={handleLogin} />
-        )}
-
-        {view === 'menu' && (
-          <Dashboard 
-            username={username} 
-            setView={setView} 
-            open1v1Setup={open1v1Setup}
-            questionsSolved={questionsSolved} 
+        {view === "login" && (
+          <Login
+            username={username}
+            setUsername={setUsername}
+            handleLogin={handleLogin}
           />
         )}
 
-        {view === 'join' && (
-          <JoinRoom 
-            socket={socket} 
-            setView={setView} 
-            username={username} 
+        {view === "menu" && (
+          <Dashboard
+            username={username}
+            setView={setView}
+            questionsSolved={questionsSolved}
           />
         )}
 
-        {view === 'grimoire' && <Grimoire setView={setView} username={username} />}
-        {view === 'rank' && <RankOverview questionsSolved={questionsSolved} setView={setView} />}
-        {view === 'history' && <History />}
-        
-        {/* PASS setView HERE */}
-        {view === 'analysis' && <AIAnalysis setView={setView} />}
+        {view === "join" && (
+          <JoinRoom
+            socket={socket}
+            username={username}
+            setRoomCode={setRoomCode}
+            setView={setView}
+          />
+        )}
 
-        {view === 'host' && (
-          <SquadHost 
-            setView={setView} 
-            inputType={inputType} setInputType={setInputType} 
-            topic={topic} setTopic={setTopic}
-            handleFileClick={handleFileClick} handleFileChange={handleFileChange} 
-            selectedFile={selectedFile} fileInputRef={fileInputRef}
+        {view === "host" && (
+          <SquadHost
+            setView={setView}
+            inputType={inputType}
+            setInputType={setInputType}
+            topic={topic}
+            setTopic={setTopic}
             createRoom={createRoom}
           />
         )}
 
-        {view === 'roomspace' && (
-          <RoomSpace 
-            roomCode={roomCode}
-            topic={topic}
-            inputType={inputType} 
+        {view === "lobby" && (
+          <Lobby
+            socket={socket}
             username={username}
-            onJoin={handleJoinLobby}
-            onExit={() => setView('host')} 
+            topic={topic}
+            roomCode={roomCode}
+            roomPlayers={roomPlayers}
+            setView={setView}
           />
         )}
 
-        {view === 'lobby' && (
-            <div className="text-center animate-[fadeIn_0.5s]">
-              <h2 className="text-9xl font-bold mb-8 text-white">{roomCode}</h2>
-              <div className="flex justify-center gap-6 mb-12">
-                 {roomPlayers.map((p, i) => (
-                    <span key={i} className="text-green-400 font-bold text-xl uppercase tracking-widest">{p}</span>
-                 ))}
-              </div>
-              <p className="text-gray-400">Waiting for host to start...</p>
-            </div>
-        )}
-
-        {view === 'game' && (
-          <GameArena 
-             socket={socket} 
-             roomData={roomData} 
-             username={username} 
-             setView={setView} 
-             onGameEnd={handleGameEnd} 
+        {view === "game" && (
+          <GameArena
+            socket={socket}
+            roomData={roomData}
+            username={username}
+            setView={setView}
+            onGameEnd={handleGameEnd}
           />
         )}
-
       </div>
 
       {show1v1Modal && (
-          <DuelModal socket={socket} username={username} setRoomData={setRoomData} setView={setView} setShow1v1Modal={setShow1v1Modal} />
+        <DuelModal
+          socket={socket}
+          username={username}
+          setRoomData={setRoomData}
+          setView={setView}
+          setShow1v1Modal={setShow1v1Modal}
+        />
       )}
-
     </div>
   );
 }

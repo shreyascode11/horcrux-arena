@@ -1,8 +1,8 @@
-require('dotenv').config();
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
+require("dotenv").config();
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
 const Groq = require("groq-sdk");
 
 const app = express();
@@ -10,34 +10,30 @@ app.use(cors());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
-  },
+  cors: { origin: "http://localhost:3000" },
 });
 
-// --- 1. GLOBAL STORAGE ---
-const roomInfo = {}; 
-
-// --- GROQ AI CONFIGURATION ---
+// =================================================
+// 🧠 GLOBAL STORAGE
+// =================================================
+const roomInfo = {};
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// --- HELPER: ROBUST JSON EXTRACTOR ---
-// FIXED: This function now actively removes the ```json wrapping causing your crash
+// =================================================
+// 🔧 HELPER: ROBUST JSON EXTRACTOR
+// =================================================
 function extractJson(text) {
   try {
     // 1. Remove Markdown code blocks (```json, ```) and whitespace
     let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    // 2. Locate the actual JSON object or array to ignore "Here is your JSON" text
+    // 2. Locate the actual JSON object or array to ignore intro text
     const firstOpenBrace = cleanText.indexOf('{');
     const firstOpenBracket = cleanText.indexOf('[');
     
     let startIndex = -1;
     let endIndex = -1;
 
-    // Determine if it's an Object {...} or Array [...]
-    // If we find an object '{' before an array '[' (or no array), parse as object
     if (firstOpenBrace !== -1 && (firstOpenBracket === -1 || firstOpenBrace < firstOpenBracket)) {
          startIndex = firstOpenBrace;
          endIndex = cleanText.lastIndexOf('}') + 1;
@@ -46,7 +42,6 @@ function extractJson(text) {
          endIndex = cleanText.lastIndexOf(']') + 1;
     }
 
-    // 3. Extract just the JSON part
     if (startIndex !== -1 && endIndex !== -1) {
         cleanText = cleanText.substring(startIndex, endIndex);
     }
@@ -58,89 +53,65 @@ function extractJson(text) {
   }
 }
 
-// --- AGENT 1: STEM QUIZ (10 QUESTIONS) ---
+// =================================================
+// 🤖 AI AGENT 1: STEM QUIZ GENERATOR
+// =================================================
 async function agentStemQuiz(topic, difficulty) {
   console.log(`🧪 STEM Agent generating quiz on: ${topic} (${difficulty})`);
   try {
     const completion = await groq.chat.completions.create({
       messages: [
         { role: "system", content: "You are a specialized Quiz API. Output raw JSON only. No markdown, no intro." },
-        // INSTRUCTION: EXPLICITLY ASK FOR 10 QUESTIONS
         { role: "user", content: `Generate exactly 10 multiple-choice questions about "${topic}".
           Format: [{"id": 1, "text": "Question?", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]` 
         }
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.5, 
-      max_tokens: 4000, // Added to ensure the AI finishes the JSON array
+      max_tokens: 4000,
     });
 
     let text = completion.choices[0]?.message?.content || "";
     const questions = extractJson(text);
     
     if (Array.isArray(questions) && questions.length > 0) {
-      // If AI gave less than 10, duplicate questions to reach 10 so game doesn't break
       while (questions.length < 10) {
         questions.push({ ...questions[0], id: questions.length + 1, text: questions[0].text + " (Bonus)" });
       }
-      return questions.slice(0, 10); // Ensure exactly 10
+      return questions.slice(0, 10);
     } else {
       throw new Error("AI output was not a valid array");
     }
-
   } catch (error) {
     console.error("❌ Quiz Agent Error:", error.message);
-    return [];
+    // Fallback Question if AI fails
+    return [{ id: 1, text: "AI Service Unavailable. Try again?", options: ["Retry", "Wait", "Reboot", "Sleep"], correctAnswer: "Retry" }];
   }
 }
 
-// --- AGENT 2: CAREER MATCHING ---
+// =================================================
+// 🤖 AI AGENT 2: CAREER GUIDANCE
+// =================================================
 async function agentCareerGuidance(profile) {
   console.log(`🚀 Career Agent analyzing profile for: ${profile.name}`);
-
   try {
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are a Senior Career Architect. You do not speak. You only output valid JSON data.
-          
-          CRITICAL INSTRUCTION FOR 'roadmap': 
-          Each step MUST be a detailed paragraph (3-4 sentences).
-          You MUST mention:
-          1. Specific tools (e.g., VS Code, Jupyter, Figma).
-          2. Specific platforms (e.g., Coursera, GitHub, LeetCode).
-          3. A concrete project to build (e.g., "Build a Weather App", "Create a Chatbot").`
+          content: `You are a Senior Career Architect. Output valid JSON data only.`
         },
         {
           role: "user",
           content: `Analyze this student profile:
-          Name: ${profile.name}
-          Skills: ${profile.skills}
-          Interests: ${profile.interests}
-          Grades: ${profile.grades}
+          Name: ${profile.name}, Skills: ${profile.skills}, Interests: ${profile.interests}, Grades: ${profile.grades}
           
-          Return a JSON object with this EXACT structure:
-          {
-            "recommended_careers": [
-              { "title": "string", "match_score": "string", "reason": "Detailed reason why this fits" },
-              { "title": "string", "match_score": "string", "reason": "Detailed reason why this fits" },
-              { "title": "string", "match_score": "string", "reason": "Detailed reason why this fits" }
-            ],
-            "roadmap": [
-              "Phase 1: [Detailed actionable paragraph with specific resources and a project idea]",
-              "Phase 2: [Detailed actionable paragraph with specific resources and a project idea]",
-              "Phase 3: [Detailed actionable paragraph with specific resources and a project idea]",
-              "Phase 4: [Detailed actionable paragraph with specific resources and a project idea]"
-            ],
-            "education_path": "Detailed degree or certification recommendation.",
-            "market_outlook": "Detailed market analysis."
-          }`
+          Return a JSON object with: "recommended_careers" (array), "roadmap" (array of strings), "education_path" (string), "market_outlook" (string).`
         }
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.3,
-      max_tokens: 4000, // Added to prevent the Roadmap from being cut off
+      max_tokens: 4000,
     });
 
     let text = completion.choices[0]?.message?.content || "";
@@ -150,115 +121,191 @@ async function agentCareerGuidance(profile) {
 
   } catch (error) {
     console.error("❌ Career Agent Error:", error.message);
-    
-    // FULL FALLBACK DATA (To keep app running if AI fails)
-    return {
-      recommended_careers: [
-        { title: "AI Research Scientist", match_score: "98%", reason: "Strong theoretical grasp combined with coding skills." },
-        { title: "Robotics Engineer", match_score: "92%", reason: "Interest in hardware and automation." },
-        { title: "Data Analyst", match_score: "85%", reason: "Matches analytical background." }
-      ],
-      roadmap: [
-        "Phase 1: Foundations. Master Advanced Python. Don't just watch videos; build a 'Library Management System' to understand databases. Complete the 'CS50' course from Harvard online.",
-        "Phase 2: Mathematics & ML. Dive deep into Linear Algebra. Build a 'Handwritten Digit Recognizer' using MNIST data to understand neural networks.",
-        "Phase 3: Hardware Integration. Buy an Arduino or Raspberry Pi and code an 'Obstacle Avoidance Bot'. Learn ROS (Robot Operating System).",
-        "Phase 4: Professional Portfolio. Contribute to Open Source on GitHub. Build a comprehensive Portfolio Website showcasing your Bot."
-      ],
-      education_path: "Masters in CS or Mechatronics recommended.",
-      market_outlook: "Very High growth expected."
-    };
+    return null; // Frontend handles null
   }
 }
 
-// --- SOCKET CONNECTION ---
-io.on('connection', (socket) => {
-  console.log(`⚡ User Connected: ${socket.id}`);
+// =================================================
+// 🔌 SOCKET CONNECTION
+// =================================================
+io.on("connection", (socket) => {
+  console.log("⚡ Connected:", socket.id);
 
-  // --- 1. MATCHMAKING ---
+  // ---------------------------------------------
+  // FEATURE 1: AI MATCHMAKING (1v1 DUEL)
+  // ---------------------------------------------
   socket.on('find_match', async ({ username, topic, difficulty }) => {
     console.log(`🔍 ${username} is searching for: ${topic}`);
-    const roomCode = `room_${socket.id}`;
+    const roomCode = `duel_${socket.id}`;
     socket.join(roomCode);
     
-    // Capture the actual topic or fallback
     const searchTopic = topic || "General Science";
-
-    // Use the AI Agent (Requests 10 questions)
+    
+    // Generate AI Questions
     const questions = await agentStemQuiz(searchTopic, difficulty || "Medium");
     
-    // If AI fails completely, use this fallback
-    const finalQuestions = questions.length > 0 ? questions : [
-       { id: 1, text: "AI Generation Failed. Please check server logs.", options: ["Retry", "Check API", "Reboot", "Sleep"], correctAnswer: "Check API" }
-    ];
-
     socket.emit("match_found", {
       roomCode,
-      topic: searchTopic, // <--- Correctly sends topic to client for History
-      questions: finalQuestions,
+      topic: searchTopic,
+      questions: questions,
       players: [{ id: socket.id, username, avatar: '👨‍🎓' }, { id: 'BOT', username: 'StemBot', avatar: '🤖' }]
     });
   });
 
-  // --- 2. CAREER ADVICE ---
+  // ---------------------------------------------
+  // FEATURE 2: CAREER ADVICE
+  // ---------------------------------------------
   socket.on('get_career_advice', async (userProfile) => {
     const careerData = await agentCareerGuidance(userProfile);
     socket.emit("career_advice_result", careerData);
   });
 
-  // --- 3. CREATE ROOM ---
-  socket.on("create_room", (data) => {
-    const { username, roomCode, config } = data;
+  // ---------------------------------------------
+  // FEATURE 3: SQUAD ROOMS (MULTIPLAYER)
+  // ---------------------------------------------
+  
+  // 1. CREATE ROOM
+  socket.on("create_room", ({ username, roomCode, config }) => {
     socket.join(roomCode);
-    
+
     roomInfo[roomCode] = {
-      host: username,
+      roomCode,
       topic: config?.topic || "General Magic",
-      file: config?.file
+      maxPlayers: 5,
+      players: [
+        {
+          id: socket.id,
+          username,
+          ready: false,
+          avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${username}`,
+          questionsSolved: 0,
+          isHost: true,
+        },
+      ],
     };
 
-    console.log(`🏰 Room Created: ${roomCode} by ${username}`);
-    
-    io.to(roomCode).emit("room_data", { 
-        players: [username], 
-        roomCode 
+    emitRoom(roomCode);
+  });
+
+  // 2. CHECK ROOM (For Join Screen)
+  socket.on("check_room", (roomCode) => {
+    const room = roomInfo[roomCode];
+    socket.emit("room_preview", room ? {
+        exists: true,
+        host: room.players.find(p => p.isHost)?.username,
+        topic: room.topic,
+        count: room.players.length,
+      } : { exists: false }
+    );
+  });
+
+  // 3. JOIN ROOM
+  socket.on("join_room", ({ roomCode, username }) => {
+    const room = roomInfo[roomCode];
+    if (!room || room.players.length >= room.maxPlayers) return;
+
+    if (!room.players.find(p => p.username === username)) {
+      room.players.push({
+        id: socket.id,
+        username,
+        ready: false,
+        avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${username}`,
+        questionsSolved: 0,
+        isHost: false,
+      });
+    }
+
+    socket.join(roomCode);
+    emitRoom(roomCode);
+  });
+
+  // 4. RECONNECT (If browser refresh)
+  socket.on("reconnect_room", ({ roomCode, username }) => {
+    const room = roomInfo[roomCode];
+    if (!room) return;
+    const player = room.players.find(p => p.username === username);
+    if (!player) return;
+    player.id = socket.id;
+    socket.join(roomCode);
+    emitRoom(roomCode);
+  });
+
+  // 5. TOGGLE READY
+  socket.on("toggle_ready", ({ roomCode, username }) => {
+    const room = roomInfo[roomCode];
+    if (!room) return;
+    const player = room.players.find(p => p.username === username);
+    if (!player) return;
+    player.ready = !player.ready;
+    emitRoom(roomCode);
+    checkAutoStart(roomCode);
+  });
+
+  // 6. START MATCH (For Squads)
+  socket.on("start_match", async (roomCode) => {
+    const room = roomInfo[roomCode];
+    if (!room) return;
+
+    // Optional: Generate Questions for the Squad
+    const questions = await agentStemQuiz(room.topic, "Medium");
+
+    io.to(roomCode).emit("match_found", {
+      roomCode,
+      topic: room.topic,
+      questions: questions,
+      players: room.players,
     });
   });
 
-  // --- 4. CHECK ROOM ---
-  socket.on("check_room", (roomCode) => {
-    const room = io.sockets.adapter.rooms.get(roomCode);
-    const info = roomInfo[roomCode];
+  // 7. KICK PLAYER
+  socket.on("kick_player", ({ roomCode, target }) => {
+    const room = roomInfo[roomCode];
+    if (!room) return;
+    const host = room.players.find(p => p.isHost && p.id === socket.id);
+    if (!host) return;
 
-    if (room && info) {
-      socket.emit("room_preview", { 
-        exists: true, 
-        name: `Room ${roomCode}`, 
-        topic: info.topic,
-        host: info.host,
-        count: room.size 
-      });
-    } else {
-      socket.emit("room_preview", { exists: false });
+    const kicked = room.players.find(p => p.username === target);
+    if (!kicked) return;
+
+    io.to(kicked.id).emit("kicked");
+    io.sockets.sockets.get(kicked.id)?.leave(roomCode);
+    room.players = room.players.filter(p => p.username !== target);
+    emitRoom(roomCode);
+  });
+
+  // 8. DISCONNECT HANDLING
+  socket.on("disconnect", () => {
+    for (const code in roomInfo) {
+      const room = roomInfo[code];
+      const index = room.players.findIndex(p => p.id === socket.id);
+      if (index === -1) continue;
+
+      const wasHost = room.players[index].isHost;
+      room.players.splice(index, 1);
+
+      if (wasHost && room.players.length > 0) {
+        room.players[0].isHost = true;
+      }
+
+      if (room.players.length === 0) {
+        delete roomInfo[code];
+        return;
+      }
+      emitRoom(code);
     }
   });
 
-  // --- 5. JOIN ROOM ---
-  socket.on("join_room", (data) => {
-    const { roomCode, username } = data;
-    const room = io.sockets.adapter.rooms.get(roomCode);
+  // --- HELPERS ---
+  function emitRoom(roomCode) {
+    io.to(roomCode).emit("room_data", roomInfo[roomCode]);
+  }
 
-    if (room) {
-      socket.join(roomCode);
-      console.log(`👋 ${username} joined ${roomCode}`);
-      const players = Array(room.size).fill("Wizard");
-      players[players.length - 1] = username;
-      io.to(roomCode).emit("room_data", { players, roomCode });
+  function checkAutoStart(roomCode) {
+    const room = roomInfo[roomCode];
+    if (room && room.players.length >= 2 && room.players.every(p => p.ready)) {
+       // Auto-start logic if you want it, otherwise wait for host
     }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('🔥 Wizard Disconnected');
-  });
+  }
 });
 
 server.listen(3001, () => {
