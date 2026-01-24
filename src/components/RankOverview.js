@@ -1,8 +1,33 @@
 import React from "react";
 import { ranks, getRank } from "./rank-system";
 
-function RankOverview({ points = 0 }) {
-  const currentRankName = getRank(points);
+// --- ICON ---
+const IconArrowLeft = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={2.5}
+    stroke="currentColor"
+    className="w-5 h-5"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+    />
+  </svg>
+);
+
+// ✅ Supports BOTH props without breaking old code
+function RankOverview({
+  points,
+  questionsSolved,
+  setView,
+}) {
+  const totalPoints = points ?? questionsSolved ?? 0;
+
+  const currentRankName = getRank(totalPoints);
   const currentRankIndex = ranks.findIndex(
     (r) => r.name === currentRankName
   );
@@ -12,7 +37,7 @@ function RankOverview({ points = 0 }) {
 
   const progress = nextRank
     ? Math.min(
-        ((points - currentRank.min) /
+        ((totalPoints - currentRank.min) /
           (nextRank.min - currentRank.min)) *
           100,
         100
@@ -20,9 +45,28 @@ function RankOverview({ points = 0 }) {
     : 100;
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-8 text-white">
-      <h1 className="text-4xl font-bold mb-8">🏆 Rank Progress</h1>
+    <div className="w-full max-w-3xl mx-auto p-10 text-white animate-[fadeIn_0.5s]">
 
+      {/* RETURN BUTTON */}
+      {setView && (
+        <div className="w-full flex items-center justify-start mb-8">
+          <button
+            onClick={() => setView("menu")}
+            className="group flex items-center gap-3 text-pink-500 hover:text-pink-400 transition-colors px-2 py-2"
+          >
+            <div className="transform group-hover:-translate-x-1 transition-transform duration-300">
+              <IconArrowLeft />
+            </div>
+            <span className="text-sm font-bold tracking-[0.2em] uppercase">
+              Return
+            </span>
+          </button>
+        </div>
+      )}
+
+      <h1 className="text-4xl font-bold mb-8">🏆 Rank Overview</h1>
+
+      {/* CURRENT RANK */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
         <p className="text-xs uppercase tracking-widest text-gray-400">
           Current Rank
@@ -33,11 +77,12 @@ function RankOverview({ points = 0 }) {
         <p className="text-gray-400 mt-2">
           Total XP:{" "}
           <span className="text-white font-bold">
-            {points}
+            {totalPoints}
           </span>
         </p>
       </div>
 
+      {/* PROGRESS */}
       {nextRank ? (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
           <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">
@@ -52,7 +97,7 @@ function RankOverview({ points = 0 }) {
           </div>
 
           <p className="text-sm text-gray-400 mt-3">
-            {points} / {nextRank.min} XP
+            {totalPoints} / {nextRank.min} XP
           </p>
         </div>
       ) : (

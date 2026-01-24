@@ -1,36 +1,40 @@
 import React, { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 
-// CORE
+// CORE COMPONENTS
 import Background from "./components/background";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import SquadHost from "./components/SquadHost";
 import DuelModal from "./components/DuelModal";
 import GameArena from "./components/GameArena";
+import Lobby from "./components/Lobby";
 
 // UI / FEATURES
 import Sidebar from "./components/Sidebar";
-import RankOverview from "./components/RankOverview";
-import History from "./components/History";
-import AIAnalysis from "./components/AIAnalysis";
-import Grimoire from "./components/Grimoire";
 import JoinRoom from "./components/JoinRoom";
-import Lobby from "./components/Lobby";
 
 // SOCKET
-const socket = io.connect("http://localhost:3001");
+const socket = io("http://localhost:3001", {
+  transports: ["websocket"],
+});
 
 function App() {
   const [view, setView] = useState("login");
-  const [username, setUsername] = useState("");
 
-  // PROGRESS
-  const [questionsSolved, setQuestionsSolved] = useState(69);
+  const [username, setUsername] = useState(
+    () => localStorage.getItem("wizardName") || ""
+  );
 
-  // ROOM / GAME STATE
+  const [avatarSeed, setAvatarSeed] = useState("felix");
+
+  const [questionsSolved, setQuestionsSolved] = useState(
+    () => parseInt(localStorage.getItem("wizardScore")) || 69
+  );
+
+  // ROOM
   const [roomCode, setRoomCode] = useState("");
-  const [roomPlayers, setRoomPlayers] = useState([13]);
+  const [roomPlayers, setRoomPlayers] = useState([]);
   const [roomData, setRoomData] = useState(null);
 
   // HOST CONFIG
@@ -38,38 +42,30 @@ function App() {
   const [inputType, setInputType] = useState("topic");
   const [topic, setTopic] = useState("");
 
-  // FILE
   const [selectedFile, setSelectedFile] = useState(null);
-  const fileInputRef = useRef(null);
-
-  // MODALS
   const [show1v1Modal, setShow1v1Modal] = useState(false);
 
-  // THEME
   const getTheme = () => {
     switch (view) {
-      case "login":
-        return "red";
-      case "menu":
-        return "blue";
+      case "login": return "red";
+      case "menu": return "blue";
       case "host":
-        return "purple";
-      case "join":
-        return "purple";
-      case "lobby":
-        return "red";
-      case "game":
-        return "green";
-      case "grimoire":
-        return "purple";
-      default:
-        return "red";
+      case "join": return "purple";
+      case "lobby": return "red";
+      case "game": return "green";
+      default: return "red";
     }
   };
 
-  // SOCKET LISTENERS
+  useEffect(() => {
+    localStorage.setItem("wizardName", username);
+    localStorage.setItem("wizardScore", questionsSolved);
+  }, [username, questionsSolved]);
+
+  // ================= SOCKET LISTENERS =================
   useEffect(() => {
     socket.on("room_data", (data) => {
+      setRoomCode(data.roomCode);
       setRoomPlayers(data.players);
       setView("lobby");
     });
@@ -79,29 +75,38 @@ function App() {
       setView("game");
     });
 
+    // ✅ REQUIRED: handle kick
+    socket.on("kicked", () => {
+      alert("You were kicked by the host");
+      setRoomCode("");
+      setRoomPlayers([]);
+      setRoomData(null);
+      setView("menu");
+    });
+
     return () => {
       socket.off("room_data");
       socket.off("match_found");
+      socket.off("kicked");
     };
   }, []);
 
-  // AUTH
+  // ================= ACTIONS =================
   const handleLogin = () => {
-    if (username.trim()) setView("menu");
+    if (username.trim()) {
+      setAvatarSeed(username);
+      setView("menu");
+    }
   };
 
   const handleLogout = () => {
     setUsername("");
-    setRoomData(null);
-    setRoomPlayers([]);
     setRoomCode("");
+    setRoomPlayers([]);
+    setRoomData(null);
     setView("login");
   };
 
-  // 1V1
-  const open1v1Setup = () => setShow1v1Modal(true);
-
-  // HOST ROOM
   const createRoom = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setRoomCode(code);
@@ -115,26 +120,23 @@ function App() {
     setView("lobby");
   };
 
-  // FILE
-  const handleFileClick = () => fileInputRef.current.click();
-  const handleFileChange = (e) => {
-    if (e.target.files[0]) setSelectedFile(e.target.files[0]);
-  };
-
-  // GAME END
   const handleGameEnd = (score) => {
     setQuestionsSolved((prev) => prev + score);
   };
 
+  // ================= RENDER =================
   return (
-    <div
-      className="relative w-full min-h-screen bg-black text-white overflow-hidden"
-      style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}
-    >
+    <div className="relative w-full min-h-screen bg-black text-white overflow-hidden">
       <Background theme={getTheme()} />
 
-      {view !== "login" && (
-        <Sidebar username={username} setView={setView} onLogout={handleLogout} />
+      {view === "menu" && (
+        <Sidebar
+          username={username}
+          avatarSeed={avatarSeed}
+          setAvatarSeed={setAvatarSeed}
+          setView={setView}
+          onLogout={handleLogout}
+        />
       )}
 
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center p-6">
@@ -150,13 +152,17 @@ function App() {
           <Dashboard
             username={username}
             setView={setView}
-            open1v1Setup={open1v1Setup}
             questionsSolved={questionsSolved}
           />
         )}
 
         {view === "join" && (
-          <JoinRoom socket={socket} setView={setView} username={username} />
+          <JoinRoom
+            socket={socket}
+            username={username}
+            setRoomCode={setRoomCode}
+            setView={setView}
+          />
         )}
 
         {view === "host" && (
@@ -166,10 +172,6 @@ function App() {
             setInputType={setInputType}
             topic={topic}
             setTopic={setTopic}
-            handleFileClick={handleFileClick}
-            handleFileChange={handleFileChange}
-            selectedFile={selectedFile}
-            fileInputRef={fileInputRef}
             createRoom={createRoom}
           />
         )}
@@ -177,8 +179,9 @@ function App() {
         {view === "lobby" && (
           <Lobby
             socket={socket}
-            roomCode={roomCode}
             username={username}
+            topic={topic}
+            roomCode={roomCode}
             roomPlayers={roomPlayers}
             setView={setView}
           />
@@ -193,11 +196,6 @@ function App() {
             onGameEnd={handleGameEnd}
           />
         )}
-
-        {view === "grimoire" && <Grimoire setView={setView} />}
-        {view === "rank" && <RankOverview questionsSolved={questionsSolved} />}
-        {view === "history" && <History />}
-        {view === "analysis" && <AIAnalysis />}
       </div>
 
       {show1v1Modal && (

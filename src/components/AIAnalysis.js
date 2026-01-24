@@ -3,7 +3,15 @@ import io from 'socket.io-client';
 
 const socket = io.connect("http://localhost:3001");
 
-const AIAnalysis = () => {
+// --- ICON COMPONENT ---
+const IconArrowLeft = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+  </svg>
+);
+
+// Accept 'setView' prop to handle navigation
+const AIAnalysis = ({ setView }) => {
   // --- STATE FOR INPUT FORM ---
   const [formData, setFormData] = useState({
     name: '',
@@ -34,6 +42,19 @@ const AIAnalysis = () => {
   return (
     <div className="min-h-screen w-full p-8 flex flex-col items-center animate-[fadeIn_0.5s]">
       
+      {/* --- RETURN BUTTON --- */}
+      <div className="w-full max-w-6xl flex items-center justify-start mb-8">
+        <button 
+          onClick={() => setView('menu')}
+          className="group flex items-center gap-3 text-purple-500 hover:text-purple-400 transition-colors px-2 py-2"
+        >
+          <div className="transform group-hover:-translate-x-1 transition-transform duration-300">
+            <IconArrowLeft />
+          </div>
+          <span className="text-sm font-bold tracking-[0.2em] uppercase">Return</span>
+        </button>
+      </div>
+
       {/* HEADER */}
       <h1 className="text-5xl font-bold text-white mb-2">AI Career Guidance</h1>
       <p className="text-gray-400 mb-12">Powered by Multi-Agent Profiling System</p>
