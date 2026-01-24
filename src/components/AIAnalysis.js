@@ -78,7 +78,7 @@ const AIAnalysis = ({ setView }) => {
               <input 
                 type="text" 
                 className="w-full bg-white/5 border-2 border-white/10 rounded-xl p-4 text-white mt-2 focus:border-purple-500 focus:bg-white/10 outline-none transition-all placeholder:text-gray-500 font-bold backdrop-blur-md"
-                placeholder="e.g. Harry Potter"
+                placeholder="e.g. arnadeep"
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
               />
             </div>
@@ -89,7 +89,7 @@ const AIAnalysis = ({ setView }) => {
                 <input 
                   type="text" 
                   className="w-full bg-white/5 border-2 border-white/10 rounded-xl p-4 text-white mt-2 focus:border-blue-500 focus:bg-white/10 outline-none transition-all placeholder:text-gray-500 font-bold backdrop-blur-md"
-                  placeholder="e.g. Potions, Flying"
+                  placeholder="e.g. Maths, Physics, Coding"
                   onChange={(e) => setFormData({...formData, skills: e.target.value})}
                 />
               </div>
@@ -98,7 +98,7 @@ const AIAnalysis = ({ setView }) => {
                 <input 
                   type="text" 
                   className="w-full bg-white/5 border-2 border-white/10 rounded-xl p-4 text-white mt-2 focus:border-purple-500 focus:bg-white/10 outline-none transition-all placeholder:text-gray-500 font-bold backdrop-blur-md"
-                  placeholder="e.g. Dark Arts"
+                  placeholder="e.g. AI, Game Development"
                   onChange={(e) => setFormData({...formData, interests: e.target.value})}
                 />
               </div>
@@ -109,7 +109,7 @@ const AIAnalysis = ({ setView }) => {
               <input 
                 type="text" 
                 className="w-full bg-white/5 border-2 border-white/10 rounded-xl p-4 text-white mt-2 focus:border-blue-500 focus:bg-white/10 outline-none transition-all placeholder:text-gray-500 font-bold backdrop-blur-md"
-                placeholder="e.g. Outstanding (O)"
+                placeholder="e.g. Outstanding (O), sgpa 9.5"
                 onChange={(e) => setFormData({...formData, grades: e.target.value})}
               />
             </div>
