@@ -70,18 +70,15 @@ This platform is forged using the finest magical artifacts (technologies):
 
 > *Witness the interface in action.*
 
-<div align="center"> 
-  <img src="./screenshots/dashboard.jpg" alt="Dashboard" width="800"/>
-  <p><i>The Wizard's Dashboard - Your Command Center</i></p>
-  <br>
-  
-  <div style="display: flex; justify-content: center; gap: 10px;">
-    <img src="./screenshots/career.jpg" alt="AI Career Guidance" width="48%" />
-    <img src="./screenshots/history.jpg" alt="Grimoire History" width="48%" />
-  </div>
-  <p><i>Left: AI Career Analysis | Right: Battle History (Grimoire)</i></p>
-</div>
+## 📷 Gallery of Magic
 
+| **Login Portal** | **Wizard Dashboard** | **Create Room** |
+|:----------------:|:--------------------:|:---------------:|
+| ![Login](./Horcrux_Images/login%20page.png) | ![Dashboard](./Horcrux_Images/user%20dashboard%20interface.png) | ![Create Room](./Horcrux_Images/create%20room%20interface.png) |
+
+| **Lobby Interface** | **Game Arena** | **Career Guidance** |
+|:-------------------:|:--------------:|:-------------------:|
+| ![Lobby](./Horcrux_Images/lobby%20interface.png) | ![Game](./Horcrux_Images/game%20interface.png) | ![Career](./Horcrux_Images/career%20guidence%20interface.png) |
 ## 🪄 How to Summon (Run Locally)
 
 If you are a fellow wizard wishing to run this locally, follow these incantations:
