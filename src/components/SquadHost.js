@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // --- ICONS ---
 const IconArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>;
@@ -12,38 +12,46 @@ const SquadHost = ({
   setInputType, 
   topic, 
   setTopic, 
-  handleFileClick, 
-  handleFileChange, 
-  selectedFile, 
-  fileInputRef, 
+  selectedFile,
+  setSelectedFile, // This must be passed from App.js
   createRoom 
 }) => {
-  
+
   const [playerCount, setPlayerCount] = useState(5);
   const playerOptions = [5, 10, 20, 50];
   
-  // Define Helvetica Font Style
+  // 1. Create a reference to the hidden file input
+  const fileInputRef = useRef(null);
+
+  // 2. Function to trigger the hidden input when the Div is clicked
+  const handleFileClick = () => {
+    if(fileInputRef.current) {
+        fileInputRef.current.click();
+    }
+  };
+
+  // 3. Function to save the file when selected
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && setSelectedFile) {
+      setSelectedFile(file);
+    }
+  };
+  
   const fontStyle = { fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" };
 
-  // --- NEW: Handle Enter Key Press ---
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // Check if Enter is pressed
       if (event.key === 'Enter') {
-        // Prevent default behavior if needed (though not strictly necessary here)
         event.preventDefault(); 
         createRoom();
       }
     };
-
-    // Add event listener to the window
     window.addEventListener('keydown', handleKeyDown);
-
-    // Cleanup listener on unmount
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [createRoom]); // Depend on createRoom so it uses the latest version of the function
+  }, [createRoom]);
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center animate-[slideUp_0.8s_cubic-bezier(0.16,1,0.3,1)]" style={fontStyle}>
@@ -55,25 +63,19 @@ const SquadHost = ({
           style={fontStyle} 
           className="group flex items-center gap-3 text-purple-500 hover:text-purple-400 transition-colors duration-300 px-2 py-2"
         >
-          {/* Arrow on the LEFT, moves LEFT on hover */}
           <div className="transform group-hover:-translate-x-1 transition-transform duration-300">
             <IconArrowLeft />
           </div>
-          <span className="text-sm font-bold tracking-[0.2em] uppercase">
-            Return
-          </span>
+          <span className="text-sm font-bold tracking-[0.2em] uppercase">Return</span>
         </button>
       </div>
 
       {/* MAIN CARD */}
       <div className="w-full max-w-3xl relative bg-black/40 border border-white/5 rounded-3xl p-12 overflow-hidden backdrop-blur-sm">
-        
-        {/* Background Glow */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-900/10 blur-[100px] rounded-full pointer-events-none"></div>
 
         <div className="relative z-10 space-y-12">
           
-          {/* CARD HEADER */}
           <div className="text-center">
             <h2 className="text-5xl md:text-6xl font-bold tracking-tighter text-white mb-4">
               Create <span className="text-purple-500">Room</span>
@@ -83,7 +85,6 @@ const SquadHost = ({
             </p>
           </div>
 
-          {/* WIZARD CAPACITY */}
           <div className="space-y-6 text-center">
             <label className="text-gray-500 font-thin tracking-[0.3em] text-xs uppercase block">Select Wizard Capacity</label>
             <div className="flex gap-4 justify-center">
@@ -103,7 +104,6 @@ const SquadHost = ({
             </div>
           </div>
 
-          {/* INPUT TABS */}
           <div className="space-y-6">
             <div className="flex items-center justify-center gap-8 border-b border-white/5 pb-4">
               <button 
@@ -127,7 +127,6 @@ const SquadHost = ({
               </button>
             </div>
 
-            {/* DYNAMIC INPUT AREA */}
             <div className="min-h-[100px]">
               {inputType === 'topic' ? (
                 <div className="animate-[fadeIn_0.5s_ease-out]">
@@ -156,13 +155,20 @@ const SquadHost = ({
                   <p className="text-white text-lg font-bold">
                     {selectedFile ? selectedFile.name : "PDF / DOCX"}
                   </p>
-                  <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                  
+                  {/* HIDDEN INPUT FOR FILE UPLOAD */}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    accept=".pdf,.docx,.txt"
+                  />
                 </div>
               )}
             </div>
           </div>
 
-          {/* GENERATE BUTTON */}
           <button 
             onClick={createRoom}
             className="w-full group relative overflow-hidden bg-white text-black font-bold uppercase tracking-[0.2em] py-5 rounded-xl hover:bg-purple-500 hover:text-white transition-all duration-500 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(168,85,247,0.4)]"

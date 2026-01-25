@@ -9,11 +9,9 @@ import SquadHost from "./components/SquadHost";
 import DuelModal from "./components/DuelModal";
 import GameArena from "./components/GameArena";
 import Lobby from "./components/Lobby";
-
-// NEW PAGES
 import Grimoire from "./components/Grimoire";
 import AIAnalysis from "./components/AIAnalysis";
-import RankOverview from "./components/RankOverview"; // ✅ IMPORTED
+import RankOverview from "./components/RankOverview";
 
 // UI / FEATURES
 import Sidebar from "./components/Sidebar";
@@ -27,15 +25,12 @@ const socket = io("http://localhost:3001", {
 function App() {
   const [view, setView] = useState("login");
 
-  const [username, setUsername] = useState(
-    () => localStorage.getItem("wizardName") || ""
-  );
-
+  // 1. Start with an empty name
+  const [username, setUsername] = useState("");
   const [avatarSeed, setAvatarSeed] = useState("felix");
 
-  const [questionsSolved, setQuestionsSolved] = useState(
-    () => parseInt(localStorage.getItem("wizardScore")) || 0
-  );
+  // 2. Start Score at 0 (We will load the real score only after login)
+  const [questionsSolved, setQuestionsSolved] = useState(0);
 
   // ROOM STATE
   const [roomCode, setRoomCode] = useState("");
@@ -61,15 +56,33 @@ function App() {
       case "game": return "green";
       case "career": return "blue";
       case "history": return "yellow";
-      case "rank": return "yellow"; // Rank Theme
+      case "rank": return "yellow";
       default: return "red";
     }
   };
 
+  // =========================================================
+  // 🧠 PROFILE MANAGEMENT SYSTEM (The Fix)
+  // =========================================================
+  
+  // A. SAVE DATA: Whenever score changes, save it to the SPECIFIC USER'S profile
   useEffect(() => {
-    localStorage.setItem("wizardName", username);
+    if (view === "login" || !username) return; // Don't save while on login screen
+
+    // 1. Save to the global keys (so components like Dashboard/Grimoire still work)
     localStorage.setItem("wizardScore", questionsSolved);
-  }, [username, questionsSolved]);
+    
+    // 2. Save to the USER-SPECIFIC profile (The Backup)
+    const userProfile = {
+      score: questionsSolved,
+      // We grab the current history log to save it with this user
+      history: JSON.parse(localStorage.getItem("wizardBattleLog") || "[]") 
+    };
+    
+    localStorage.setItem(`profile_${username}`, JSON.stringify(userProfile));
+
+  }, [questionsSolved, username, view]); // Runs whenever score updates
+
 
   // ================= SOCKET LISTENERS =================
   useEffect(() => {
@@ -100,9 +113,33 @@ function App() {
   }, []);
 
   // ================= ACTIONS =================
+  
+  // B. LOGIN: This is where we swap the data
   const handleLogin = () => {
     if (username.trim()) {
       setAvatarSeed(username);
+      
+      // Try to find a saved profile for this specific name
+      const savedProfile = localStorage.getItem(`profile_${username}`);
+
+      if (savedProfile) {
+        // --- OLD USER FOUND ---
+        const parsed = JSON.parse(savedProfile);
+        
+        // 1. Restore their Score
+        setQuestionsSolved(parsed.score || 0);
+        
+        // 2. Restore their History (Inject it into the global slot so Grimoire sees it)
+        localStorage.setItem("wizardBattleLog", JSON.stringify(parsed.history || []));
+      } else {
+        // --- NEW USER ---
+        // 1. Reset Score to 0
+        setQuestionsSolved(0);
+        
+        // 2. Wipe the History (Fresh Start)
+        localStorage.setItem("wizardBattleLog", "[]");
+      }
+
       setView("menu");
     }
   };
@@ -141,8 +178,6 @@ function App() {
     <div className="relative w-full min-h-screen bg-black text-white overflow-hidden">
       <Background theme={getTheme()} />
 
-      {/* ✅ FIX 1: Sidebar ONLY on Dashboard ('menu') */}
-      {/* ✅ FIX 3 & 4: Passed setUsername and view props */}
       {view === "menu" && (
         <Sidebar
           username={username}
@@ -191,6 +226,8 @@ function App() {
             topic={topic}
             setTopic={setTopic}
             createRoom={createRoom}
+            selectedFile={selectedFile}
+            setSelectedFile={setSelectedFile}
           />
         )}
 
@@ -230,7 +267,6 @@ function App() {
           />
         )}
 
-        {/* ✅ FIX 2: Added RankOverview Rendering */}
         {view === "rank" && (
            <RankOverview
             setView={setView}
